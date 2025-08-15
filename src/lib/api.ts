@@ -74,7 +74,7 @@ export const GetVesselDetailsResponseSchema = z.object({
 })
 export type GetVesselDetailsResponse = z.infer<typeof GetVesselDetailsResponseSchema>
 
-const apiBaseUrl = 'https://localhost:7115'
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'https://localhost:7115'
 
 export const apiClient: AxiosInstance = axios.create({
 	baseURL: apiBaseUrl,

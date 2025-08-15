@@ -159,29 +159,29 @@ export default function CargoTrackingPage() {
 
   const columns: GridColDef[] = useMemo(
     () => [
-      { 
-        field: "blNumber", 
-        headerName: "BL Number", 
-        flex: 1.3, 
+      {
+        field: "blNumber",
+        headerName: "BL Number",
+        flex: 1.3,
         minWidth: 120,
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
-      { 
-        field: "cargoType", 
-        headerName: "Type", 
-        flex: 0.8, 
+      {
+        field: "cargoType",
+        headerName: "Type",
+        flex: 0.8,
         minWidth: 100,
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
-      { 
-        field: "terminal", 
-        headerName: "Terminal", 
-        flex: 1.1, 
+      {
+        field: "terminal",
+        headerName: "Terminal",
+        flex: 1.1,
         minWidth: 100,
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
       {
         field: "qtyOrdered",
@@ -190,7 +190,7 @@ export default function CargoTrackingPage() {
         minWidth: 130,
         type: "number",
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
       {
         field: "totalQtyHandled",
@@ -199,7 +199,7 @@ export default function CargoTrackingPage() {
         minWidth: 130,
         type: "number",
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
       {
         field: "containerID",
@@ -207,15 +207,15 @@ export default function CargoTrackingPage() {
         flex: 1.3,
         minWidth: 125,
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
-      { 
-        field: "mvvin", 
-        headerName: "VIN", 
-        flex: 1.2, 
+      {
+        field: "mvvin",
+        headerName: "VIN",
+        flex: 1.2,
         minWidth: 120,
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
       {
         field: "cargoID",
@@ -224,7 +224,7 @@ export default function CargoTrackingPage() {
         minWidth: 100,
         type: "number",
         align: "center",
-        headerAlign: "center"
+        headerAlign: "center",
       },
     ],
     []

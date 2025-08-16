@@ -25,7 +25,6 @@ import type { GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
 import { Api } from "../lib/api";
 import type { Cargo, CargoTrackingDetailResponse, Terminal } from "../lib/api";
-import { useTerminalStore } from "../store/terminalStore";
 
 function useTerminals() {
   return useQuery({ queryKey: ["terminals"], queryFn: Api.getTerminals });
@@ -33,10 +32,7 @@ function useTerminals() {
 
 export default function CargoTrackingPage() {
   const { data: terminals } = useTerminals();
-  const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
-  const setSelectedTerminalId = useTerminalStore(
-    (s) => s.setSelectedTerminalId
-  );
+  const [selectedTerminalCode, setSelectedTerminalCode] = useState<string | "">("");
 
   const [selectedCargoId, setSelectedCargoId] = useState<string | null>(null);
   const [searchString, setSearchString] = useState<string>("");
@@ -58,8 +54,8 @@ export default function CargoTrackingPage() {
     return () => clearTimeout(timer);
   }, [searchString, debouncedSearchString]);
 
-  const cargoQuery = useQuery({
-    queryKey: ["cargo", selectedTerminalId ?? "none", debouncedSearchString],
+    const cargoQuery = useQuery({
+    queryKey: ["cargo", selectedTerminalCode || "all", debouncedSearchString],
     queryFn: async () => {
       // If there's a specific search term, use the API search endpoint
       if (debouncedSearchString.trim()) {
@@ -73,9 +69,9 @@ export default function CargoTrackingPage() {
               searchString: debouncedSearchString,
               operator: "Equals",
               terminalCode:
-                selectedTerminalId === "all" || selectedTerminalId === "ALL"
+                !selectedTerminalCode || selectedTerminalCode === "ALL"
                   ? undefined
-                  : selectedTerminalId,
+                  : selectedTerminalCode,
             });
             if (apiResults.length > 0) {
               return apiResults;
@@ -87,12 +83,10 @@ export default function CargoTrackingPage() {
 
         // Fallback to client-side search for other fields
         let allCargo = [];
-        if (selectedTerminalId === "all" || selectedTerminalId === "ALL") {
+        if (!selectedTerminalCode || selectedTerminalCode === "ALL") {
           allCargo = await Api.getCargoByTerminal();
         } else {
-          allCargo = await Api.getCargoByTerminal(
-            selectedTerminalId || undefined
-          );
+          allCargo = await Api.getCargoByTerminal(selectedTerminalCode);
         }
 
         const searchLower = debouncedSearchString.toLowerCase().trim();
@@ -109,18 +103,18 @@ export default function CargoTrackingPage() {
       }
 
       // No search term - load all cargo
-      if (selectedTerminalId === "all" || selectedTerminalId === "ALL") {
+      if (!selectedTerminalCode || selectedTerminalCode === "ALL") {
         return Api.getCargoByTerminal();
       } else {
-        return Api.getCargoByTerminal(selectedTerminalId || undefined);
+        return Api.getCargoByTerminal(selectedTerminalCode);
       }
     },
-    enabled: Boolean(selectedTerminalId),
+    enabled: true,
     staleTime: 30000, // Cache for 30 seconds
     gcTime: 300000, // Keep in cache for 5 minutes (renamed from cacheTime in newer versions)
   });
 
-  const trackingQuery = useQuery({
+	const trackingQuery = useQuery({
     queryKey: ["cargo-tracking", selectedCargoId ?? "none"],
     queryFn: async () => {
       console.log("Fetching tracking for cargoId:", selectedCargoId);
@@ -128,21 +122,20 @@ export default function CargoTrackingPage() {
       console.log("Tracking data received:", result);
       return result;
     },
-    enabled: Boolean(selectedCargoId),
+		enabled: Boolean(selectedCargoId),
   });
 
-  useEffect(() => {
-    if (!selectedTerminalId && terminals && terminals.length > 0) {
-      // Always prefer "ALL" terminal if available, otherwise default to "all"
+	useEffect(() => {
+    if (!selectedTerminalCode && terminals && terminals.length > 0) {
       const allTerminal = terminals.find((t) => t.terminalCode === "ALL");
-      const defaultTerminal = allTerminal ? "ALL" : "all";
-      console.log("Setting default terminal to:", defaultTerminal);
-      setSelectedTerminalId(defaultTerminal);
+      const defaultCode = allTerminal ? "ALL" : "";
+      console.log("Setting default cargo terminal to:", defaultCode);
+      setSelectedTerminalCode(defaultCode);
     }
-  }, [selectedTerminalId, terminals, setSelectedTerminalId]);
+  }, [selectedTerminalCode, terminals]);
 
-  // Default bottom grid to first cargo of the top grid when available
-  useEffect(() => {
+    // Default bottom grid to first cargo of the top grid when available
+    useEffect(() => {
     if (
       cargoQuery.data &&
       Array.isArray(cargoQuery.data) &&
@@ -157,37 +150,37 @@ export default function CargoTrackingPage() {
     }
   }, [cargoQuery.data, selectedCargoId]);
 
-  const columns: GridColDef[] = useMemo(
-    () => [
+	const columns: GridColDef[] = useMemo(
+		() => [
       {
         field: "blNumber",
         headerName: "BL Number",
-        flex: 1.3,
-        minWidth: 120,
+        flex: 1.1,
+        minWidth: 110,
         align: "center",
         headerAlign: "center",
       },
       {
         field: "cargoType",
         headerName: "Type",
-        flex: 0.8,
-        minWidth: 100,
+        flex: 0.7,
+        minWidth: 90,
         align: "center",
         headerAlign: "center",
       },
       {
         field: "terminal",
         headerName: "Terminal",
-        flex: 1.1,
-        minWidth: 100,
+        flex: 0.9,
+        minWidth: 90,
         align: "center",
         headerAlign: "center",
       },
       {
         field: "qtyOrdered",
         headerName: "Qty Ordered",
-        flex: 1.1,
-        minWidth: 130,
+        flex: 0.9,
+        minWidth: 110,
         type: "number",
         align: "center",
         headerAlign: "center",
@@ -195,8 +188,8 @@ export default function CargoTrackingPage() {
       {
         field: "totalQtyHandled",
         headerName: "Qty Handled",
-        flex: 1.2,
-        minWidth: 130,
+        flex: 0.9,
+        minWidth: 110,
         type: "number",
         align: "center",
         headerAlign: "center",
@@ -204,85 +197,78 @@ export default function CargoTrackingPage() {
       {
         field: "containerID",
         headerName: "Container ID",
-        flex: 1.3,
-        minWidth: 125,
+        flex: 1.1,
+        minWidth: 110,
         align: "center",
         headerAlign: "center",
       },
       {
         field: "mvvin",
         headerName: "VIN",
-        flex: 1.2,
-        minWidth: 120,
+        flex: 1.0,
+        minWidth: 110,
         align: "center",
         headerAlign: "center",
       },
       {
-        field: "cargoID",
-        headerName: "Cargo ID",
-        flex: 1,
-        minWidth: 100,
-        type: "number",
+        field: "gcmarks",
+        headerName: "GC Marks",
+        flex: 1.0,
+        minWidth: 110,
         align: "center",
         headerAlign: "center",
+        valueGetter: (_v, row) => (row as any)?.gcmarks || "",
       },
     ],
     []
   );
 
-  return (
-    <Stack gap={3}>
-      <Paper variant="outlined" sx={{ p: 2.5 }}>
+    return (
+        <Stack gap={3}>
+      <Paper variant="outlined" sx={{ p: 0.75 }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           alignItems={{ sm: "center" }}
           justifyContent="space-between"
-          gap={2}
+          gap={1}
         >
-          <Box>
-            <Typography variant="h5" fontWeight={800}>
-              Cargo Tracking
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Search cargo and view live tracking status
-            </Typography>
-          </Box>
+          <Typography variant="subtitle1" fontWeight={800}>Cargo Tracking</Typography>
           <Stack
             direction={{ xs: "column", md: "row" }}
-            gap={1.5}
-            sx={{ width: "100%", maxWidth: 760 }}
+            gap={0.75}
+            sx={{ width: "100%", maxWidth: 680 }}
           >
-            <FormControl size="small" sx={{ minWidth: 200 }}>
-              <InputLabel id="terminal-label">Terminal</InputLabel>
-              <Select
-                labelId="terminal-label"
-                label="Terminal"
-                value={selectedTerminalId ?? ""}
-                onChange={(e) => setSelectedTerminalId(e.target.value)}
+                        <FormControl size="small" sx={{ minWidth: 200 }}>
+                            <InputLabel id="terminal-label">Terminal</InputLabel>
+                            <Select
+                                labelId="terminal-label"
+                                label="Terminal"
+                value={selectedTerminalCode}
+                onChange={(e) => setSelectedTerminalCode(e.target.value)}
               >
                 {/* Only show manual "All" option if API doesn't provide one */}
                 {!(terminals ?? []).some((t) => t.terminalCode === "ALL") && (
-                  <MenuItem key="all" value="all">
+                  <MenuItem key="all" value="">
                     All
                   </MenuItem>
                 )}
-                {(terminals ?? []).map((t: Terminal) => (
+                                {(terminals ?? []).map((t: Terminal) => (
                   <MenuItem
                     key={t.terminalCode || t.terminalID}
                     value={t.terminalCode || ""}
                   >
                     {t.terminalName || "Unknown Terminal"}
                   </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            <TextField
-              size="small"
-              label="Search"
+                                ))}
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            size="small"
+                            label="Search"
               placeholder="Search by BL Number, Cargo ID, Container ID, VIN, Terminal"
-              value={searchString}
-              onChange={(e) => setSearchString(e.target.value)}
-              fullWidth
+                            value={searchString}
+                            onChange={(e) => setSearchString(e.target.value)}
+                            fullWidth
               InputProps={{
                 startAdornment: (
                   <InputAdornment position="start">
@@ -301,26 +287,24 @@ export default function CargoTrackingPage() {
                   </InputAdornment>
                 ),
               }}
-            />
-          </Stack>
-        </Stack>
-      </Paper>
+                        />
+                    </Stack>
+                </Stack>
+            </Paper>
 
-      <Box sx={{ height: 440, width: "100%" }}>
-        <DataGrid
+      <Box sx={{ height: 260, width: "100%" }}>
+				<DataGrid
           rows={
             Array.isArray(cargoQuery.data)
               ? cargoQuery.data.map((c: Cargo) => ({ ...c, id: c.cargoID }))
               : []
           }
           loading={cargoQuery.isLoading || isSearching}
-          columns={columns}
-          pageSizeOptions={[10, 25, 50]}
-          initialState={{
-            pagination: {
-              paginationModel: { pageSize: 25 },
-            },
-          }}
+					columns={columns}
+          hideFooter
+          density="compact"
+          rowHeight={40}
+          columnHeaderHeight={36}
           onRowClick={(params) => {
             setSelectedCargoId(params.row.cargoID.toString());
             console.log(
@@ -341,15 +325,15 @@ export default function CargoTrackingPage() {
               backgroundColor: "#0b1f4b",
               color: "#ffffff",
               fontWeight: 800,
-              minHeight: "40px !important",
-              maxHeight: "40px !important",
+              minHeight: "36px !important",
+              maxHeight: "36px !important",
             },
             "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
               backgroundColor: "#0b1f4b",
               color: "#ffffff",
               fontWeight: 800,
-              fontSize: "0.875rem",
-              padding: "8px 16px",
+              fontSize: "0.8rem",
+              padding: "4px 8px",
             },
             "& .MuiDataGrid-columnSeparator": {
               color: "rgba(255,255,255,0.25)",
@@ -407,18 +391,18 @@ export default function CargoTrackingPage() {
               backgroundColor: "rgba(24,62,138,0.2) !important",
             },
           }}
-        />
-      </Box>
+				/>
+			</Box>
 
-      <Paper variant="outlined" sx={{ p: 2.5 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
+      <Paper variant="outlined" sx={{ p: 1.25 }}>
+        <Typography variant="subtitle1" sx={{ mb: 1 }}>
           Shipment Progress
           {selectedCargoId && (
             <Typography
               variant="body2"
               color="text.secondary"
               component="span"
-              sx={{ ml: 2 }}
+              sx={{ ml: 1 }}
             >
               (Cargo ID: {selectedCargoId})
             </Typography>
@@ -451,10 +435,10 @@ export default function CargoTrackingPage() {
             trackingQuery.data.trackingDetails.length === 0) && (
             <Typography color="text.secondary">
               No tracking data available for this cargo.
-            </Typography>
-          )}
-      </Paper>
-    </Stack>
+                </Typography>
+                )}
+            </Paper>
+		</Stack>
   );
 }
 

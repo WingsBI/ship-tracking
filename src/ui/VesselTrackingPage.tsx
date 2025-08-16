@@ -20,7 +20,6 @@ import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useQuery } from "@tanstack/react-query";
 import { Api } from "../lib/api";
 import type { Terminal, Vessel } from "../lib/api";
-import { useTerminalStore } from "../store/terminalStore";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 
@@ -30,20 +29,19 @@ function useTerminals() {
 
 function useVesselList(
   queryKey: string[],
-  fetcher: (terminalCode: string) => Promise<Vessel[]>,
+  fetcher: (terminalCode?: string | null) => Promise<Vessel[]>,
   terminalCode: string | null
 ) {
   return useQuery({
-    queryKey: queryKey.concat(terminalCode ?? "none"),
+    queryKey: queryKey.concat(terminalCode ?? "ALL"),
     queryFn: async () => {
-      if (terminalCode === "all" || terminalCode === "ALL") {
-        // For "all", we'll need to get all vessels across all terminals
-        // For now, return empty array since the API doesn't support this directly
-        return [];
-      }
-      return fetcher(terminalCode as string);
+      const codeToUse =
+        !terminalCode || terminalCode.toUpperCase() === "ALL"
+          ? null
+          : terminalCode;
+      return fetcher(codeToUse);
     },
-    enabled: Boolean(terminalCode),
+    enabled: true,
   });
 }
 
@@ -52,70 +50,72 @@ export default function VesselTrackingPage() {
     null | "arrivals" | "departures" | "port" | "anchorage"
   >(null);
   const { data: terminals } = useTerminals();
-  const selectedTerminalId = useTerminalStore((s) => s.selectedTerminalId);
-  const setSelectedTerminalId = useTerminalStore(
-    (s) => s.setSelectedTerminalId
+  // Separate terminal selection for Vessel page
+  const [selectedTerminalCode, setSelectedTerminalCode] = useState<string | "">(
+    ""
   );
 
   const expectedArrivals = useVesselList(
     ["vessels", "expected-arrivals"],
     Api.getVesselsByTerminal,
-    selectedTerminalId
+    selectedTerminalCode || "ALL"
   );
   const imports = useVesselList(
     ["vessels", "imports"],
     Api.getVesselsByTerminal,
-    selectedTerminalId
+    selectedTerminalCode || "ALL"
   );
   const departures = useVesselList(
     ["vessels", "expected-departures"],
     Api.getVesselsByTerminal,
-    selectedTerminalId
+    selectedTerminalCode || "ALL"
   );
   const anchored = useVesselList(
     ["vessels", "anchored"],
     Api.getVesselsByTerminal,
-    selectedTerminalId
+    selectedTerminalCode || "ALL"
   );
 
   useEffect(() => {
-    if (!selectedTerminalId && terminals && terminals.length > 0) {
-      // Always prefer "ALL" terminal if available, otherwise default to "all"
-      const allTerminal = terminals.find(t => t.terminalCode === 'ALL')
-      const defaultTerminal = allTerminal ? 'ALL' : 'all'
-      setSelectedTerminalId(defaultTerminal)
+    if (!selectedTerminalCode && terminals && terminals.length > 0) {
+      const hasAll = terminals.some((t) => t.terminalCode === "ALL");
+      const defaultCode = hasAll ? "ALL" : "";
+      setSelectedTerminalCode(defaultCode);
     }
-  }, [selectedTerminalId, terminals, setSelectedTerminalId]);
+  }, [selectedTerminalCode, terminals]);
 
   return (
-    <Stack gap={3}>
-      <Paper variant="outlined" sx={{ p: 2.5 }}>
+    <Stack gap={2}>
+      <Paper variant="outlined" sx={{ p: 0.75 }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           alignItems={{ sm: "center" }}
           justifyContent="space-between"
-          gap={2}
+          gap={1}
         >
-          <Typography variant="h6" fontWeight={800}>
+          <Typography variant="subtitle1" fontWeight={800}>
             Vessel Tracking
           </Typography>
-          <FormControl size="small" sx={{ minWidth: 260 }}>
+          <FormControl size="small" sx={{ minWidth: 220 }}>
             <InputLabel id="terminal-label">Terminal</InputLabel>
             <Select
               labelId="terminal-label"
               label="Terminal"
-              value={selectedTerminalId ?? ""}
-              onChange={(e) => setSelectedTerminalId(e.target.value)}
+              value={selectedTerminalCode}
+              onChange={(e) => setSelectedTerminalCode(e.target.value)}
             >
               {/* Only show manual "All" option if API doesn't provide one */}
-              {!(terminals ?? []).some(t => t.terminalCode === 'ALL') && (
-                <MenuItem key="all" value="all">
+              {!(terminals ?? []).some((t) => t.terminalCode === "ALL") && (
+                <MenuItem key="all" value="">
                   All
                 </MenuItem>
               )}
               {(terminals ?? []).map((t: Terminal) => (
-                <MenuItem key={t.terminalCode || t.terminalID} value={t.terminalCode || ''}>
-                  {t.terminalName || 'Unknown Terminal'}
+                <MenuItem
+                  key={t.terminalCode || t.terminalID}
+                  value={t.terminalCode || ""}
+                >
+                  {t.terminalName || "Unknown Terminal"}
                 </MenuItem>
               ))}
             </Select>
@@ -127,7 +127,7 @@ export default function VesselTrackingPage() {
         sx={{
           display: "grid",
           gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: 3,
+          gap: 1.5,
           width: "100%",
           overflowX: "hidden",
         }}
@@ -141,7 +141,7 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={expectedArrivals.data}
               loading={expectedArrivals.isLoading}
-              height={300}
+              height={150}
             />
           </VesselPanel>
         </Box>
@@ -154,7 +154,7 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={departures.data}
               loading={departures.isLoading}
-              height={300}
+              height={150}
             />
           </VesselPanel>
         </Box>
@@ -167,7 +167,7 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={imports.data}
               loading={imports.isLoading}
-              height={300}
+              height={150}
             />
           </VesselPanel>
         </Box>
@@ -180,7 +180,7 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={anchored.data}
               loading={anchored.isLoading}
-              height={300}
+              height={150}
             />
           </VesselPanel>
         </Box>
@@ -297,10 +297,20 @@ function VesselTable({
   const columns: GridColDef[] = [
     { field: "vesselName", headerName: "Vessel Name", flex: 1, minWidth: 160 },
     { field: "vesselId", headerName: "Vessel ID", width: 120 },
-    { field: "arrivalDate", headerName: "Arrival Date", width: 180, 
-      valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '' },
-    { field: "departureDate", headerName: "Departure Date", width: 180,
-      valueFormatter: (value) => value ? new Date(value).toLocaleDateString() : '' },
+    {
+      field: "arrivalDate",
+      headerName: "Arrival Date",
+      width: 160,
+      valueFormatter: (value) =>
+        value ? new Date(value).toLocaleDateString() : "",
+    },
+    {
+      field: "departureDate",
+      headerName: "Departure Date",
+      width: 160,
+      valueFormatter: (value) =>
+        value ? new Date(value).toLocaleDateString() : "",
+    },
   ];
   return (
     <Box
@@ -347,72 +357,75 @@ function VesselTable({
         rows={(items ?? []).map((v) => ({ ...v, id: v.vesselId }))}
         loading={loading}
         columns={columns}
-        pageSizeOptions={[10, 25, 50]}
+        hideFooter
+        density="compact"
+        rowHeight={28}
+        columnHeaderHeight={36}
         disableRowSelectionOnClick
         getRowClassName={(params) =>
           params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
         }
         disableColumnMenu
-                  sx={{
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              minHeight: "40px !important",
-              maxHeight: "40px !important",
-            },
-            "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              fontSize: "0.875rem",
-              padding: "8px 16px",
-            },
-            "& .MuiDataGrid-columnSeparator": {
-              color: "rgba(255,255,255,0.25)",
-            },
-            "& .MuiDataGrid-virtualScroller": {
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            },
-            "& .MuiDataGrid-virtualScrollerContent": {
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            },
-            "& .MuiDataGrid-virtualScrollerRenderZone": {
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            },
-            "& .MuiDataGrid-main": {
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            },
-            "& .MuiDataGrid-root": {
-              "&::-webkit-scrollbar": { display: "none" },
-              msOverflowStyle: "none",
-              scrollbarWidth: "none",
-            },
-            "& .MuiDataGrid-cell": {
-              backgroundColor: "#ffffff !important",
-              color: "#000000",
-            },
-            "& .MuiDataGrid-row": {
-              backgroundColor: "#ffffff !important",
-            },
-            "& .MuiDataGrid-row:hover": {
-              backgroundColor: "#f5f5f5 !important",
-            },
-            "& .even": {
-              backgroundColor: "#ffffff !important",
-            },
-            "& .odd": {
-              backgroundColor: "#ffffff !important",
-            },
-          }}
+        sx={{
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: "#0b1f4b",
+            color: "#ffffff",
+            fontWeight: 800,
+            minHeight: "36px !important",
+            maxHeight: "36px !important",
+          },
+          "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
+            backgroundColor: "#0b1f4b",
+            color: "#ffffff",
+            fontWeight: 800,
+            fontSize: "0.8rem",
+            padding: "4px 8px",
+          },
+          "& .MuiDataGrid-columnSeparator": {
+            color: "rgba(255,255,255,0.25)",
+          },
+          "& .MuiDataGrid-virtualScroller": {
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          },
+          "& .MuiDataGrid-virtualScrollerContent": {
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          },
+          "& .MuiDataGrid-virtualScrollerRenderZone": {
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          },
+          "& .MuiDataGrid-main": {
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          },
+          "& .MuiDataGrid-root": {
+            "&::-webkit-scrollbar": { display: "none" },
+            msOverflowStyle: "none",
+            scrollbarWidth: "none",
+          },
+          "& .MuiDataGrid-cell": {
+            backgroundColor: "#ffffff !important",
+            color: "#000000",
+          },
+          "& .MuiDataGrid-row": {
+            backgroundColor: "#ffffff !important",
+          },
+          "& .MuiDataGrid-row:hover": {
+            backgroundColor: "#f5f5f5 !important",
+          },
+          "& .even": {
+            backgroundColor: "#ffffff !important",
+          },
+          "& .odd": {
+            backgroundColor: "#ffffff !important",
+          },
+        }}
       />
     </Box>
   );

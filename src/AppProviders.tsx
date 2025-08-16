@@ -99,12 +99,7 @@ const theme = createTheme({
                 },
             },
         },
-        MuiDataGrid: {
-            styleOverrides: {
-                columnHeaders: { backgroundColor: 'rgba(24,62,138,0.06)' },
-                footerContainer: { backgroundColor: 'transparent' },
-            },
-        },
+
         MuiButton: {
             styleOverrides: {
                 root: { borderRadius: 10 },

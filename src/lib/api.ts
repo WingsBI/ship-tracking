@@ -140,9 +140,12 @@ export const Api = {
 		return parsed.data
 	},
 
-	// GET /api/Tracking/getVesselDetailsByTerminal/{terminalCode}
-	getVesselsByTerminal: async (terminalCode: string): Promise<Vessel[]> => {
-		const { data } = await apiClient.get(`/api/Tracking/getVesselDetailsByTerminal/${terminalCode}`)
+	// GET /api/Tracking/getVesselDetailsByTerminal (all) or /{terminalCode}
+	getVesselsByTerminal: async (terminalCode?: string | null): Promise<Vessel[]> => {
+		const url = terminalCode && terminalCode.toUpperCase() !== 'ALL'
+			? `/api/Tracking/getVesselDetailsByTerminal/${terminalCode}`
+			: `/api/Tracking/getVesselDetailsByTerminal`
+		const { data } = await apiClient.get(url)
 		const result = await parseApiResponse(GetVesselDetailsResponseSchema, data)
 		return result?.vessels || []
 	},

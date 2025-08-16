@@ -19,7 +19,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
 import { useQuery } from "@tanstack/react-query";
 import { Api } from "../lib/api";
-import type { Terminal, Vessel } from "../lib/api";
+import type { Terminal, VesselTrackingDto } from "../lib/api";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 
@@ -27,19 +27,15 @@ function useTerminals() {
   return useQuery({ queryKey: ["terminals"], queryFn: Api.getTerminals });
 }
 
-function useVesselList(
-  queryKey: string[],
-  fetcher: (terminalCode?: string | null) => Promise<Vessel[]>,
-  terminalCode: string | null
-) {
+function useVesselTracking(terminalCode: string | null) {
   return useQuery({
-    queryKey: queryKey.concat(terminalCode ?? "ALL"),
+    queryKey: ["vessels", "tracking", terminalCode ?? "ALL"],
     queryFn: async () => {
       const codeToUse =
         !terminalCode || terminalCode.toUpperCase() === "ALL"
           ? null
           : terminalCode;
-      return fetcher(codeToUse);
+      return Api.getVesselTrackingByTerminal(codeToUse);
     },
     enabled: true,
   });
@@ -55,26 +51,10 @@ export default function VesselTrackingPage() {
     ""
   );
 
-  const expectedArrivals = useVesselList(
-    ["vessels", "expected-arrivals"],
-    Api.getVesselsByTerminal,
-    selectedTerminalCode || "ALL"
-  );
-  const imports = useVesselList(
-    ["vessels", "imports"],
-    Api.getVesselsByTerminal,
-    selectedTerminalCode || "ALL"
-  );
-  const departures = useVesselList(
-    ["vessels", "expected-departures"],
-    Api.getVesselsByTerminal,
-    selectedTerminalCode || "ALL"
-  );
-  const anchored = useVesselList(
-    ["vessels", "anchored"],
-    Api.getVesselsByTerminal,
-    selectedTerminalCode || "ALL"
-  );
+  const tracking = useVesselTracking(selectedTerminalCode || "ALL");
+  const tileCategories = tracking.data?.tileCategories ?? [];
+  const getVessels = (name: string): VesselTrackingDto[] =>
+    (tileCategories.find((t) => (t.tileCategory || "").toLowerCase() === name.toLowerCase())?.vessels) ?? [];
 
   useEffect(() => {
     if (!selectedTerminalCode && terminals && terminals.length > 0) {
@@ -139,8 +119,8 @@ export default function VesselTrackingPage() {
             onMax={() => setMaximized("arrivals")}
           >
             <VesselTable
-              items={expectedArrivals.data}
-              loading={expectedArrivals.isLoading}
+              items={getVessels("Expected Arrivals")}
+              loading={tracking.isLoading}
               height={150}
             />
           </VesselPanel>
@@ -152,8 +132,8 @@ export default function VesselTrackingPage() {
             onMax={() => setMaximized("departures")}
           >
             <VesselTable
-              items={departures.data}
-              loading={departures.isLoading}
+              items={getVessels("Expected Departures")}
+              loading={tracking.isLoading}
               height={150}
             />
           </VesselPanel>
@@ -165,8 +145,8 @@ export default function VesselTrackingPage() {
             onMax={() => setMaximized("port")}
           >
             <VesselTable
-              items={imports.data}
-              loading={imports.isLoading}
+              items={getVessels("Ships in Port")}
+              loading={tracking.isLoading}
               height={150}
             />
           </VesselPanel>
@@ -178,8 +158,8 @@ export default function VesselTrackingPage() {
             onMax={() => setMaximized("anchorage")}
           >
             <VesselTable
-              items={anchored.data}
-              loading={anchored.isLoading}
+              items={getVessels("Ships in Anchorage")}
+              loading={tracking.isLoading}
               height={150}
             />
           </VesselPanel>
@@ -215,29 +195,29 @@ export default function VesselTrackingPage() {
         <DialogContent>
           {maximized === "arrivals" && (
             <VesselTable
-              items={expectedArrivals.data}
-              loading={expectedArrivals.isLoading}
+              items={getVessels("Expected Arrivals")}
+              loading={tracking.isLoading}
               height={640}
             />
           )}
           {maximized === "departures" && (
             <VesselTable
-              items={departures.data}
-              loading={departures.isLoading}
+              items={getVessels("Expected Departures")}
+              loading={tracking.isLoading}
               height={640}
             />
           )}
           {maximized === "port" && (
             <VesselTable
-              items={imports.data}
-              loading={imports.isLoading}
+              items={getVessels("Ships in Port")}
+              loading={tracking.isLoading}
               height={640}
             />
           )}
           {maximized === "anchorage" && (
             <VesselTable
-              items={anchored.data}
-              loading={anchored.isLoading}
+              items={getVessels("Ships in Anchorage")}
+              loading={tracking.isLoading}
               height={640}
             />
           )}
@@ -290,26 +270,42 @@ function VesselTable({
   loading,
   height = 380,
 }: {
-  items?: Vessel[];
+  items?: VesselTrackingDto[];
   loading: boolean;
   height?: number;
 }) {
   const columns: GridColDef[] = [
     { field: "vesselName", headerName: "Vessel Name", flex: 1, minWidth: 160 },
-    { field: "vesselId", headerName: "Vessel ID", width: 120 },
+    { field: "imo", headerName: "IMO", width: 120 },
+    { field: "calluid", headerName: "Call UID", width: 120 },
+    { field: "terminal", headerName: "Terminal", width: 120 },
+    { field: "voyageIn", headerName: "Voy-In", width: 110 },
+    { field: "voyageOut", headerName: "Voy-Out", width: 110 },
+    { field: "berth", headerName: "Berth", width: 110 },
+    { field: "callStatus", headerName: "Status", width: 120 },
     {
-      field: "arrivalDate",
-      headerName: "Arrival Date",
-      width: 160,
-      valueFormatter: (value) =>
-        value ? new Date(value).toLocaleDateString() : "",
+      field: "eta",
+      headerName: "ETA",
+      width: 140,
+      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
     },
     {
-      field: "departureDate",
-      headerName: "Departure Date",
-      width: 160,
-      valueFormatter: (value) =>
-        value ? new Date(value).toLocaleDateString() : "",
+      field: "etd",
+      headerName: "ETD",
+      width: 140,
+      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+    },
+    {
+      field: "ata",
+      headerName: "ATA",
+      width: 140,
+      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+    },
+    {
+      field: "atd",
+      headerName: "ATD",
+      width: 140,
+      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
     },
   ];
   return (
@@ -354,7 +350,7 @@ function VesselTable({
       }}
     >
       <DataGrid
-        rows={(items ?? []).map((v) => ({ ...v, id: v.vesselId }))}
+        rows={(items ?? []).map((v, idx) => ({ ...v, id: (v as any).callId ?? idx }))}
         loading={loading}
         columns={columns}
         hideFooter

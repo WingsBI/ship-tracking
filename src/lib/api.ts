@@ -41,6 +41,36 @@ export const CargoSchema = z.object({
 })
 export type Cargo = z.infer<typeof CargoSchema>
 
+// New vessel tracking schemas per updated API
+export const VesselTrackingDtoSchema = z.object({
+	tileCategory: z.string().nullable(),
+	terminal: z.string().nullable(),
+	vesselName: z.string().nullable(),
+	calluid: z.number().nullable(),
+	imo: z.string().nullable(),
+	eta: z.string().nullable(),
+	etd: z.string().nullable(),
+	ata: z.string().nullable(),
+	atd: z.string().nullable(),
+	voyageIn: z.string().nullable(),
+	voyageOut: z.string().nullable(),
+	berth: z.string().nullable(),
+	callStatus: z.string().nullable(),
+	callId: z.number().nullable(),
+})
+export type VesselTrackingDto = z.infer<typeof VesselTrackingDtoSchema>
+
+export const TileCategoryDataSchema = z.object({
+	tileCategory: z.string().nullable(),
+	vessels: z.array(VesselTrackingDtoSchema).nullable(),
+})
+export type TileCategoryData = z.infer<typeof TileCategoryDataSchema>
+
+export const GetVesselTrackingResponseSchema = z.object({
+	tileCategories: z.array(TileCategoryDataSchema).nullable(),
+})
+export type GetVesselTrackingResponse = z.infer<typeof GetVesselTrackingResponseSchema>
+
 export const CargoTrackingEventSchema = z.object({
 	eventNo: z.number(),
 	eventDescription: z.string().nullable(),
@@ -140,29 +170,19 @@ export const Api = {
 		return parsed.data
 	},
 
-	// GET /api/Tracking/getVesselDetailsByTerminal (all) or /{terminalCode}
-	getVesselsByTerminal: async (terminalCode?: string | null): Promise<Vessel[]> => {
-		const url = terminalCode && terminalCode.toUpperCase() !== 'ALL'
-			? `/api/Tracking/getVesselDetailsByTerminal/${terminalCode}`
-			: `/api/Tracking/getVesselDetailsByTerminal`
-		const { data } = await apiClient.get(url)
-		const result = await parseApiResponse(GetVesselDetailsResponseSchema, data)
-		return result?.vessels || []
+	// NEW: GET /api/Tracking/getVesselTrackingByTerminal?terminalCode=
+	getVesselTrackingByTerminal: async (terminalCode?: string | null): Promise<GetVesselTrackingResponse | null> => {
+		const { data } = await apiClient.get('/api/Tracking/getVesselTrackingByTerminal', {
+			params: terminalCode && terminalCode.toUpperCase() !== 'ALL' ? { terminalCode } : {},
+		})
+		return await parseApiResponse(GetVesselTrackingResponseSchema, data)
 	},
 
-	// For backward compatibility, map the old vessel methods to the new API
-	getVesselExpectedArrivals: async (terminalCode: string): Promise<Vessel[]> => {
-		return Api.getVesselsByTerminal(terminalCode)
-	},
-	getVesselImports: async (terminalCode: string): Promise<Vessel[]> => {
-		return Api.getVesselsByTerminal(terminalCode)
-	},
-	getVesselExpectedDepartures: async (terminalCode: string): Promise<Vessel[]> => {
-		return Api.getVesselsByTerminal(terminalCode)
-	},
-	getVesselAnchored: async (terminalCode: string): Promise<Vessel[]> => {
-		return Api.getVesselsByTerminal(terminalCode)
-	},
+	// Deprecated helpers retained for compatibility but not used going forward
+	getVesselExpectedArrivals: async (_terminalCode: string): Promise<Vessel[]> => { return [] },
+	getVesselImports: async (_terminalCode: string): Promise<Vessel[]> => { return [] },
+	getVesselExpectedDepartures: async (_terminalCode: string): Promise<Vessel[]> => { return [] },
+	getVesselAnchored: async (_terminalCode: string): Promise<Vessel[]> => { return [] },
 
 	// GET /api/Tracking/searchCargoTracking
 	searchCargo: async (params: { searchString: string; operator?: string; terminalCode?: string | null }): Promise<Cargo[]> => {

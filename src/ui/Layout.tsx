@@ -23,7 +23,6 @@ export default function Layout() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
 
   const currentIndex = useMemo(() => {
     if (location.pathname.startsWith("/cargo")) return 1;

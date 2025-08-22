@@ -37,7 +37,6 @@ export default function CargoTrackingPage() {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("xl"));
 
   // Get zoom level for dynamic sizing
   const [zoomLevel, setZoomLevel] = useState(1);

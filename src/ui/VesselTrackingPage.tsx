@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AppBar,
   Box,
@@ -50,8 +50,6 @@ export default function VesselTrackingPage() {
   const { data: terminals } = useTerminals();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
-  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
-  const isLargeScreen = useMediaQuery(theme.breakpoints.up("xl"));
 
   // Separate terminal selection for Vessel page
   const [selectedTerminalCode, setSelectedTerminalCode] = useState<string | "">(
@@ -385,7 +383,6 @@ function VesselPanel({
 function VesselTable({
   items,
   loading,
-  isMaximized = false,
 }: {
   items?: VesselTrackingDto[];
   loading: boolean;

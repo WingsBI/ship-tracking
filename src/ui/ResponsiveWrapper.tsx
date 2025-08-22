@@ -19,7 +19,7 @@ export function ResponsiveWrapper({
   sx,
   ...props
 }: ResponsiveWrapperProps) {
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [, setZoomLevel] = useState(1);
   const [screenSize, setScreenSize] = useState({
     width: window.innerWidth,
     height: window.innerHeight,

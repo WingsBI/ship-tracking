@@ -164,27 +164,27 @@ export default function CargoTrackingPage() {
     }
   }, [selectedTerminalCode, terminals]);
 
-     // Default bottom grid to first cargo of the top grid when available
-   useEffect(() => {
-     if (
-       cargoQuery.data &&
-       Array.isArray(cargoQuery.data) &&
-       cargoQuery.data.length > 0
-     ) {
-       // Always select the first cargo when data changes, or if no cargo is selected
-       if (!selectedCargoId) {
-         const firstCargoId = cargoQuery.data[0].cargoID.toString();
-         console.log("Auto-selecting first cargo:", firstCargoId);
-         setSelectedCargoId(firstCargoId);
-       }
-     } else {
-       // Clear selected cargo when there are no rows
-       if (selectedCargoId) {
-         console.log("Clearing selected cargo - no rows available");
-         setSelectedCargoId(null);
-       }
-     }
-   }, [cargoQuery.data, selectedCargoId]);
+  // Default bottom grid to first cargo of the top grid when available
+  useEffect(() => {
+    if (
+      cargoQuery.data &&
+      Array.isArray(cargoQuery.data) &&
+      cargoQuery.data.length > 0
+    ) {
+      // Always select the first cargo when data changes, or if no cargo is selected
+      if (!selectedCargoId) {
+        const firstCargoId = cargoQuery.data[0].cargoID.toString();
+        console.log("Auto-selecting first cargo:", firstCargoId);
+        setSelectedCargoId(firstCargoId);
+      }
+    } else {
+      // Clear selected cargo when there are no rows
+      if (selectedCargoId) {
+        console.log("Clearing selected cargo - no rows available");
+        setSelectedCargoId(null);
+      }
+    }
+  }, [cargoQuery.data, selectedCargoId]);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -275,82 +275,8 @@ export default function CargoTrackingPage() {
   );
 
   const rowH = Math.round((isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel);
-  const headerH = Math.round((isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel);
+  const headerH = Math.round((isMobile ? 36 : isTablet ? 42 : 48) * zoomLevel);
   const baseRem = `${Math.max(0.625, Math.min(0.875, 0.75 * zoomLevel))}rem`;
-
-  const rawColumns: GridColDef[] = [
-    {
-      field: "blNumber",
-      headerName: "BL Number",
-      flex: 1.1,
-      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(120 * zoomLevel) : undefined,
-    },
-    {
-      field: "cargoType",
-      headerName: "Type",
-      flex: 0.7,
-      minWidth: Math.round((isMobile ? 60 : 90) * zoomLevel),
-      maxWidth: isMobile ? Math.round(80 * zoomLevel) : undefined,
-      hideable: true,
-    },
-    {
-      field: "terminal",
-      headerName: "Terminal",
-      flex: 0.9,
-      minWidth: Math.round((isMobile ? 70 : 90) * zoomLevel),
-      maxWidth: isMobile ? Math.round(90 * zoomLevel) : undefined,
-      hideable: true,
-    },
-    {
-      field: "qtyOrdered",
-      headerName: "Qty Ordered",
-      flex: 0.9,
-      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
-      type: "number",
-      hideable: true,
-    },
-    {
-      field: "totalQtyHandled",
-      headerName: "Qty Handled",
-      flex: 0.9,
-      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
-      type: "number",
-      hideable: true,
-    },
-    {
-      field: "containerID",
-      headerName: "Container ID",
-      flex: 1.1,
-      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(120 * zoomLevel) : undefined,
-      hideable: true,
-    },
-    {
-      field: "mvvin",
-      headerName: "MV VIN",
-      flex: 1.0,
-      minWidth: Math.round((isMobile ? 70 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
-      hideable: true,
-    },
-    {
-      field: "gcmarks",
-      headerName: "GC Marks",
-      flex: 1.0,
-      minWidth: Math.round((isMobile ? 70 : 110) * zoomLevel),
-      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
-      valueGetter: (_v, row) => (row as any)?.gcmarks || "",
-      hideable: true,
-    },
-  ];
-
-  // const columns: GridColDef[] = useMemo(
-  //   () => rawColumns.map((c) => ({ ...c, align: "left", headerAlign: "left" })),
-  //   [isMobile, zoomLevel]
-  // );
 
   return (
     <Stack
@@ -535,30 +461,31 @@ export default function CargoTrackingPage() {
               "&::-webkit-scrollbar": { display: "none !important" },
             },
 
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              minHeight: `${headerH}px !important`,
-              maxHeight: `${headerH}px !important`,
-              fontSize: `${Math.max(0.75, Math.min(1, 0.875 * zoomLevel))}rem`,
-              borderBottom: "none !important",
-              display: "flex",
-              alignItems: "center",
-              borderTopLeftRadius: "8px",
-              borderTopRightRadius: "8px",
-            },
-
             "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
               backgroundColor: "#0b1f4b",
               color: "#ffffff",
-              fontWeight: 800,
-              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
-                4 * zoomLevel
+              fontWeight: 700,
+              padding: `${Math.round(6 * zoomLevel)}px ${Math.round(
+                10 * zoomLevel
               )}px`,
-              borderRight: "none !important",
-              borderBottom: "none !important",
-              // ⛔️ no justifyContent center here — lets headerAlign: "left" work
+              borderRight: "1px solid rgba(255,255,255,0.1) !important",
+              borderBottom: "1px solid #183e8a !important",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: `${Math.max(0.6, Math.min(0.8, 0.775 * zoomLevel))}rem`,
+              textTransform: "uppercase",
+              letterSpacing: "0.3px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                backgroundColor: "#183e8a",
+                transform: "translateY(-1px)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              },
             },
 
             "& .MuiDataGrid-columnSeparator": { display: "none !important" },
@@ -568,8 +495,8 @@ export default function CargoTrackingPage() {
               color: "#000000",
               border: "none !important",
               fontSize: baseRem,
-              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
-                4 * zoomLevel
+              padding: `${Math.round(4 * zoomLevel)}px ${Math.round(
+                6 * zoomLevel
               )}px`,
               // left alignment comes from column defs
             },
@@ -616,105 +543,108 @@ export default function CargoTrackingPage() {
         />
       </Box>
 
-             {selectedCargoId && Array.isArray(cargoQuery.data) && cargoQuery.data.length > 0 && (
-         <Paper
-           variant="outlined"
-           sx={{
-             p: { xs: 0.5, sm: 0.75 },
-             minHeight: { xs: "170px", sm: "190px", md: "217px" },
-             height: { xs: "170px", sm: "190px", md: "217px" },
-             maxHeight: { xs: "170px", sm: "190px", md: "217px" },
-             overflow: "hidden",
-           }}
-         >
-          <Typography
-            variant="subtitle1"
-            fontWeight={800}
+      {selectedCargoId &&
+        Array.isArray(cargoQuery.data) &&
+        cargoQuery.data.length > 0 && (
+          <Paper
+            variant="outlined"
             sx={{
-              mb: { xs: 0.75, sm: 1 },
-              fontSize: { xs: "0.875rem", sm: "1rem" },
-              ml: { xs: 0.5, sm: 1 },
+              p: { xs: 0.5, sm: 0.75 },
+              minHeight: { xs: "170px", sm: "190px", md: "217px" },
+              height: { xs: "170px", sm: "190px", md: "217px" },
+              maxHeight: { xs: "170px", sm: "190px", md: "217px" },
+              overflow: "hidden",
             }}
           >
-            Shipment Progress
-            {selectedCargoId && (
-              <Typography
-                variant="body2"
-                color="text.secondary"
-                component="span"
-                sx={{
-                  ml: { xs: 0.5, sm: 1 },
-                  fontSize: { xs: "0.625rem", sm: "0.75rem" },
-                }}
-              >
-                (Cargo ID: {selectedCargoId})
-              </Typography>
-            )}
-          </Typography>
-          <Box
-            sx={{
-              height: "calc(100% - 40px)",
-              overflow: "auto",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              scrollbarWidth: "none",
-              "-ms-overflow-style": "none",
-              "&::-webkit-scrollbar": {
-                width: "0px",
-                height: "0px",
-                display: "none",
-              },
-            }}
-          >
-            {trackingQuery.isLoading && (
-              <Typography
-                color="text.secondary"
-                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-              >
-                Loading tracking data...
-              </Typography>
-            )}
-            {trackingQuery.error && (
-              <Typography
-                color="error"
-                sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-              >
-                Error loading tracking data. Please try selecting another cargo.
-              </Typography>
-            )}
-            {!trackingQuery.isLoading &&
-              !trackingQuery.error &&
-              !trackingQuery.data && (
+            <Typography
+              variant="subtitle1"
+              fontWeight={800}
+              sx={{
+                mb: { xs: 0.75, sm: 1 },
+                fontSize: { xs: "0.875rem", sm: "1rem" },
+                ml: { xs: 0.5, sm: 1 },
+              }}
+            >
+              Shipment Progress
+              {selectedCargoId && (
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  component="span"
+                  sx={{
+                    ml: { xs: 0.5, sm: 1 },
+                    fontSize: { xs: "0.625rem", sm: "0.75rem" },
+                  }}
+                >
+                  (Cargo ID: {selectedCargoId})
+                </Typography>
+              )}
+            </Typography>
+            <Box
+              sx={{
+                height: "calc(100% - 40px)",
+                overflow: "auto",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                scrollbarWidth: "none",
+                "-ms-overflow-style": "none",
+                "&::-webkit-scrollbar": {
+                  width: "0px",
+                  height: "0px",
+                  display: "none",
+                },
+              }}
+            >
+              {trackingQuery.isLoading && (
                 <Typography
                   color="text.secondary"
                   sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
                 >
-                  Select a cargo to see tracking
+                  Loading tracking data...
                 </Typography>
               )}
-            {trackingQuery.data &&
-              trackingQuery.data.trackingDetails &&
-              trackingQuery.data.trackingDetails.length > 0 && (
-                <Box sx={{ width: "100%", height: "100%" }}>
-                  <ShipmentStepper
-                    events={trackingQuery.data.trackingDetails}
-                  />
-                </Box>
-              )}
-            {trackingQuery.data &&
-              (!trackingQuery.data.trackingDetails ||
-                trackingQuery.data.trackingDetails.length === 0) && (
+              {trackingQuery.error && (
                 <Typography
-                  color="text.secondary"
+                  color="error"
                   sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
                 >
-                  No tracking data available for this cargo.
+                  Error loading tracking data. Please try selecting another
+                  cargo.
                 </Typography>
               )}
-          </Box>
-        </Paper>
-      )}
+              {!trackingQuery.isLoading &&
+                !trackingQuery.error &&
+                !trackingQuery.data && (
+                  <Typography
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                  >
+                    Select a cargo to see tracking
+                  </Typography>
+                )}
+              {trackingQuery.data &&
+                trackingQuery.data.trackingDetails &&
+                trackingQuery.data.trackingDetails.length > 0 && (
+                  <Box sx={{ width: "100%", height: "100%" }}>
+                    <ShipmentStepper
+                      events={trackingQuery.data.trackingDetails}
+                    />
+                  </Box>
+                )}
+              {trackingQuery.data &&
+                (!trackingQuery.data.trackingDetails ||
+                  trackingQuery.data.trackingDetails.length === 0) && (
+                  <Typography
+                    color="text.secondary"
+                    sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                  >
+                    No tracking data available for this cargo.
+                  </Typography>
+                )}
+            </Box>
+          </Paper>
+        )}
     </Stack>
   );
 }

@@ -398,13 +398,13 @@ function VesselTable({
   // Calculate responsive sizes based on zoom and screen size
   const getResponsiveSizes = () => {
     const baseRowHeight = isMobile ? 28 : isTablet ? 32 : 36;
-    const baseHeaderHeight = isMobile ? 32 : isTablet ? 36 : 40;
-    const baseFontSize = isMobile ? 0.7 : isTablet ? 0.75 : 0.8;
+    const baseHeaderHeight = isMobile ? 42 : isTablet ? 48 : 54;
+    const baseFontSize = isMobile ? 0.6 : isTablet ? 0.7 : 0.75;
 
     return {
       rowHeight: Math.max(24, Math.round(baseRowHeight)),
-      headerHeight: Math.max(28, Math.round(baseHeaderHeight)),
-      fontSize: Math.max(0.6, Math.min(0.9, baseFontSize)),
+      headerHeight: Math.max(38, Math.round(baseHeaderHeight)),
+      fontSize: Math.max(0.4, Math.min(0.7, baseFontSize)),
     };
   };
 
@@ -417,53 +417,71 @@ function VesselTable({
       flex: 1,
       minWidth: isMobile ? 120 : 160,
       maxWidth: isMobile ? 200 : undefined,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "imo",
       headerName: "IMO",
       width: isMobile ? 80 : 100,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "calluid",
       headerName: "Call UID",
-      width: isMobile ? 80 : 100,
+      width: isMobile ? 90 : 110,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "terminal",
       headerName: "Terminal",
-      width: isMobile ? 80 : 100,
+      width: isMobile ? 90 : 110,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "voyageIn",
       headerName: "Voy-In",
-      width: isMobile ? 80 : 100,
+      width: isMobile ? 90 : 110,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "voyageOut",
       headerName: "Voy-Out",
-      width: isMobile ? 80 : 100,
+      width: isMobile ? 95 : 115,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "berth",
       headerName: "Berth",
-      width: isMobile ? 60 : 80,
+      width: isMobile ? 70 : 90,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "callStatus",
       headerName: "Status",
       width: isMobile ? 80 : 100,
       hideable: true,
+      align: "center",
+      headerAlign: "center",
     },
     {
       field: "eta",
       headerName: "ETA",
-      width: isMobile ? 120 : 150,
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
       valueFormatter: (value) =>
         value
           ? new Date(value)
@@ -482,7 +500,9 @@ function VesselTable({
     {
       field: "etd",
       headerName: "ETD",
-      width: isMobile ? 120 : 150,
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
       valueFormatter: (value) =>
         value
           ? new Date(value)
@@ -501,7 +521,9 @@ function VesselTable({
     {
       field: "ata",
       headerName: "ATA",
-      width: isMobile ? 120 : 150,
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
       valueFormatter: (value) =>
         value
           ? new Date(value)
@@ -520,7 +542,9 @@ function VesselTable({
     {
       field: "atd",
       headerName: "ATD",
-      width: isMobile ? 120 : 150,
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
       valueFormatter: (value) =>
         value
           ? new Date(value)
@@ -586,6 +610,22 @@ function VesselTable({
           getRowClassName={(params) =>
             params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
           }
+          slots={{
+            noRowsOverlay: () => (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  fontSize: `${sizes.fontSize}rem`,
+                  color: "text.secondary",
+                }}
+              >
+                No records found
+              </Box>
+            ),
+          }}
           sx={{
             border: "none",
             height: "100% !important",
@@ -593,7 +633,7 @@ function VesselTable({
             fontSize: `${sizes.fontSize}rem`,
             // Hide all possible scrollbars globally
             scrollbarWidth: "none", // Firefox
-            msOverflowStyle: "none", // IE/Edge  
+            msOverflowStyle: "none", // IE/Edge
             "&::-webkit-scrollbar": {
               display: "none !important", // Webkit
             },
@@ -622,30 +662,39 @@ function VesselTable({
                 display: "none !important", // Webkit
               },
             },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              minHeight: `${sizes.headerHeight}px !important`,
-              maxHeight: `${sizes.headerHeight}px !important`,
-              fontSize: `${sizes.fontSize}rem`,
-              borderBottom: "none !important",
-            },
             "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
               backgroundColor: "#0b1f4b",
               color: "#ffffff",
-              fontWeight: 800,
-              fontSize: `${sizes.fontSize}rem`,
-              padding: "4px 8px",
-              borderRight: "none !important",
-              borderBottom: "none !important",
+              fontWeight: 700,
+              fontSize: `${Math.max(
+                0.7,
+                Math.min(0.9, sizes.fontSize * 1.0)
+              )}rem`,
+              padding: "12px 16px",
+              borderRight: "1px solid rgba(255,255,255,0.1) !important",
+              borderBottom: "1px solid #183e8a !important",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textTransform: "uppercase",
+              letterSpacing: "0.3px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                backgroundColor: "#183e8a",
+                transform: "translateY(-1px)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              },
             },
             "& .MuiDataGrid-columnSeparator": {
               display: "none !important",
             },
             "& .MuiDataGrid-cell": {
               fontSize: `${sizes.fontSize}rem`,
-              padding: "4px 8px",
+              padding: "8px 12px",
               backgroundColor: "#ffffff !important",
               color: "#000000",
               border: "none !important",
@@ -668,6 +717,7 @@ function VesselTable({
               height: "calc(100% - ${sizes.headerHeight}px) !important",
               maxHeight: "calc(100% - ${sizes.headerHeight}px) !important",
               overflow: "auto !important",
+              backgroundColor: "#ffffff",
               scrollbarWidth: "none !important", // Firefox
               msOverflowStyle: "none !important", // IE/Edge
               "&::-webkit-scrollbar": {
@@ -698,21 +748,21 @@ function VesselTable({
             // Additional MUI DataGrid scrollable elements
             "& .MuiDataGrid-window": {
               scrollbarWidth: "none !important",
-              msOverflowStyle: "none !important", 
+              msOverflowStyle: "none !important",
               "&::-webkit-scrollbar": {
                 display: "none !important",
               },
             },
             "& .MuiDataGrid-viewport": {
               scrollbarWidth: "none !important",
-              msOverflowStyle: "none !important", 
+              msOverflowStyle: "none !important",
               "&::-webkit-scrollbar": {
                 display: "none !important",
               },
             },
             "& .MuiDataGrid-overlay": {
               scrollbarWidth: "none !important",
-              msOverflowStyle: "none !important", 
+              msOverflowStyle: "none !important",
               "&::-webkit-scrollbar": {
                 display: "none !important",
               },

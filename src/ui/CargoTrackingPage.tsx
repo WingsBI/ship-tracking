@@ -164,21 +164,27 @@ export default function CargoTrackingPage() {
     }
   }, [selectedTerminalCode, terminals]);
 
-  // Default bottom grid to first cargo of the top grid when available
-  useEffect(() => {
-    if (
-      cargoQuery.data &&
-      Array.isArray(cargoQuery.data) &&
-      cargoQuery.data.length > 0
-    ) {
-      // Always select the first cargo when data changes, or if no cargo is selected
-      if (!selectedCargoId) {
-        const firstCargoId = cargoQuery.data[0].cargoID.toString();
-        console.log("Auto-selecting first cargo:", firstCargoId);
-        setSelectedCargoId(firstCargoId);
-      }
-    }
-  }, [cargoQuery.data, selectedCargoId]);
+     // Default bottom grid to first cargo of the top grid when available
+   useEffect(() => {
+     if (
+       cargoQuery.data &&
+       Array.isArray(cargoQuery.data) &&
+       cargoQuery.data.length > 0
+     ) {
+       // Always select the first cargo when data changes, or if no cargo is selected
+       if (!selectedCargoId) {
+         const firstCargoId = cargoQuery.data[0].cargoID.toString();
+         console.log("Auto-selecting first cargo:", firstCargoId);
+         setSelectedCargoId(firstCargoId);
+       }
+     } else {
+       // Clear selected cargo when there are no rows
+       if (selectedCargoId) {
+         console.log("Clearing selected cargo - no rows available");
+         setSelectedCargoId(null);
+       }
+     }
+   }, [cargoQuery.data, selectedCargoId]);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -267,6 +273,84 @@ export default function CargoTrackingPage() {
     ],
     [isMobile, zoomLevel]
   );
+
+  const rowH = Math.round((isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel);
+  const headerH = Math.round((isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel);
+  const baseRem = `${Math.max(0.625, Math.min(0.875, 0.75 * zoomLevel))}rem`;
+
+  const rawColumns: GridColDef[] = [
+    {
+      field: "blNumber",
+      headerName: "BL Number",
+      flex: 1.1,
+      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(120 * zoomLevel) : undefined,
+    },
+    {
+      field: "cargoType",
+      headerName: "Type",
+      flex: 0.7,
+      minWidth: Math.round((isMobile ? 60 : 90) * zoomLevel),
+      maxWidth: isMobile ? Math.round(80 * zoomLevel) : undefined,
+      hideable: true,
+    },
+    {
+      field: "terminal",
+      headerName: "Terminal",
+      flex: 0.9,
+      minWidth: Math.round((isMobile ? 70 : 90) * zoomLevel),
+      maxWidth: isMobile ? Math.round(90 * zoomLevel) : undefined,
+      hideable: true,
+    },
+    {
+      field: "qtyOrdered",
+      headerName: "Qty Ordered",
+      flex: 0.9,
+      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
+      type: "number",
+      hideable: true,
+    },
+    {
+      field: "totalQtyHandled",
+      headerName: "Qty Handled",
+      flex: 0.9,
+      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
+      type: "number",
+      hideable: true,
+    },
+    {
+      field: "containerID",
+      headerName: "Container ID",
+      flex: 1.1,
+      minWidth: Math.round((isMobile ? 80 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(120 * zoomLevel) : undefined,
+      hideable: true,
+    },
+    {
+      field: "mvvin",
+      headerName: "MV VIN",
+      flex: 1.0,
+      minWidth: Math.round((isMobile ? 70 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
+      hideable: true,
+    },
+    {
+      field: "gcmarks",
+      headerName: "GC Marks",
+      flex: 1.0,
+      minWidth: Math.round((isMobile ? 70 : 110) * zoomLevel),
+      maxWidth: isMobile ? Math.round(100 * zoomLevel) : undefined,
+      valueGetter: (_v, row) => (row as any)?.gcmarks || "",
+      hideable: true,
+    },
+  ];
+
+  // const columns: GridColDef[] = useMemo(
+  //   () => rawColumns.map((c) => ({ ...c, align: "left", headerAlign: "left" })),
+  //   [isMobile, zoomLevel]
+  // );
 
   return (
     <Stack
@@ -383,43 +467,197 @@ export default function CargoTrackingPage() {
           columns={columns}
           hideFooter
           density="compact"
-          rowHeight={Math.round(
-            (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-          )}
-          columnHeaderHeight={Math.round(
-            (isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel
-          )}
-          onRowClick={(params) => {
-            setSelectedCargoId(params.row.cargoID.toString());
-            console.log(
-              "Selected cargo:",
-              params.row.cargoID,
-              "BL:",
-              params.row.blNumber
-            );
-          }}
-          getRowClassName={(params) => {
-            const isSelected =
-              params.row.cargoID.toString() === selectedCargoId;
-            return isSelected ? "cargo-row-selected" : "";
-          }}
+          rowHeight={rowH}
+          columnHeaderHeight={headerH}
           disableColumnMenu
+          disableRowSelectionOnClick
+          onRowClick={(params) =>
+            setSelectedCargoId(params.row.cargoID.toString())
+          }
+          getRowClassName={(params) =>
+            params.row.cargoID.toString() === selectedCargoId
+              ? "cargo-row-selected"
+              : ""
+          }
+          slots={{
+            noRowsOverlay: () => (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  fontSize: baseRem,
+                  color: "text.secondary",
+                }}
+              >
+                No records found
+              </Box>
+            ),
+          }}
           sx={{
-            fontSize: `${Math.max(
-              0.625,
-              Math.min(0.875, 0.75 * zoomLevel)
-            )}rem`,
-            height: "100%",
-            width: "100%",
+            fontSize: baseRem,
+            height: "100% !important",
+            width: "100% !important",
+            border: "none",
+            borderRadius: "8px 8px 8px 8px",
+            overflow: "hidden",
+
+            // hide scrollbars on the grid and descendants
+            scrollbarWidth: "none",
+            msOverflowStyle: "none",
+            "&::-webkit-scrollbar": { display: "none" },
+            "& *": {
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
+              "&::-webkit-scrollbar": { display: "none !important" },
+            },
+
+            // Root & main can be hidden; the scroller must be scrollable
             "& .MuiDataGrid-root": {
               height: "100% !important",
+              overflow: "hidden !important",
+              borderRadius: "8px 8px 8px 8px",
             },
             "& .MuiDataGrid-main": {
               height: "100% !important",
+              overflow: "hidden !important",
+              borderRadius: "8px 8px 8px 8px",
             },
+
+            // ✅ allow scrolling here; hide only the bars
             "& .MuiDataGrid-virtualScroller": {
-              height: "100% !important",
+              height: `calc(100% - ${headerH}px) !important`,
+              maxHeight: `calc(100% - ${headerH}px) !important`,
+              overflow: "auto !important",
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
+              "&::-webkit-scrollbar": { display: "none !important" },
+            },
+
+            "& .MuiDataGrid-columnHeaders": {
+              backgroundColor: "#0b1f4b",
+              color: "#ffffff",
+              fontWeight: 800,
+              minHeight: `${headerH}px !important`,
+              maxHeight: `${headerH}px !important`,
+              fontSize: `${Math.max(0.75, Math.min(1, 0.875 * zoomLevel))}rem`,
+              borderBottom: "none !important",
+              display: "flex",
+              alignItems: "center",
+              borderTopLeftRadius: "8px",
+              borderTopRightRadius: "8px",
+            },
+
+            "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
+              backgroundColor: "#0b1f4b",
+              color: "#ffffff",
+              fontWeight: 800,
+              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
+                4 * zoomLevel
+              )}px`,
+              borderRight: "none !important",
+              borderBottom: "none !important",
+              // ⛔️ no justifyContent center here — lets headerAlign: "left" work
+            },
+
+            "& .MuiDataGrid-columnSeparator": { display: "none !important" },
+
+            "& .MuiDataGrid-cell": {
+              backgroundColor: "#ffffff !important",
+              color: "#000000",
+              border: "none !important",
+              fontSize: baseRem,
+              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
+                4 * zoomLevel
+              )}px`,
+              // left alignment comes from column defs
+            },
+
+            "& .MuiDataGrid-row": {
+              backgroundColor: "#ffffff !important",
+              minHeight: `${rowH}px !important`,
+              maxHeight: `${rowH}px !important`,
+              "&:hover": {
+                backgroundColor: "#f0f8ff !important",
+                "& .MuiDataGrid-cell": {
+                  backgroundColor: "#f0f8ff !important",
+                },
+              },
+            },
+
+            // keep your selected-row highlight with the left accent bar
+            "& .cargo-row-selected": {
+              backgroundColor: "rgba(24,62,138,0.15) !important",
+              boxShadow: "inset 4px 0 0 #183e8a !important",
+              minHeight: `${rowH}px !important`,
+              maxHeight: `${rowH}px !important`,
+              "& .MuiDataGrid-cell": {
+                backgroundColor: "transparent !important",
+                fontWeight: "600 !important",
+              },
+              "&:hover": {
+                backgroundColor: "rgba(24,62,138,0.2) !important",
+              },
+            },
+
+            "& .MuiDataGrid-footerContainer": { display: "none !important" },
+
+            // Ensure last row has proper bottom border radius
+            "& .MuiDataGrid-row:last-child": {
+              "& .MuiDataGrid-cell:first-of-type": {
+                borderBottomLeftRadius: "8px",
+              },
+              "& .MuiDataGrid-cell:last-of-type": {
+                borderBottomRightRadius: "8px",
+              },
+            },
+          }}
+        />
+      </Box>
+
+             {selectedCargoId && Array.isArray(cargoQuery.data) && cargoQuery.data.length > 0 && (
+         <Paper
+           variant="outlined"
+           sx={{
+             p: { xs: 0.5, sm: 0.75 },
+             minHeight: { xs: "170px", sm: "190px", md: "217px" },
+             height: { xs: "170px", sm: "190px", md: "217px" },
+             maxHeight: { xs: "170px", sm: "190px", md: "217px" },
+             overflow: "hidden",
+           }}
+         >
+          <Typography
+            variant="subtitle1"
+            fontWeight={800}
+            sx={{
+              mb: { xs: 0.75, sm: 1 },
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+              ml: { xs: 0.5, sm: 1 },
+            }}
+          >
+            Shipment Progress
+            {selectedCargoId && (
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                component="span"
+                sx={{
+                  ml: { xs: 0.5, sm: 1 },
+                  fontSize: { xs: "0.625rem", sm: "0.75rem" },
+                }}
+              >
+                (Cargo ID: {selectedCargoId})
+              </Typography>
+            )}
+          </Typography>
+          <Box
+            sx={{
+              height: "calc(100% - 40px)",
               overflow: "auto",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
               scrollbarWidth: "none",
               "-ms-overflow-style": "none",
               "&::-webkit-scrollbar": {
@@ -427,283 +665,56 @@ export default function CargoTrackingPage() {
                 height: "0px",
                 display: "none",
               },
-            },
-            "& .MuiDataGrid-columnHeaders": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              height: `${Math.round(
-                (isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel
-              )}px !important`,
-              fontSize: `${Math.max(0.75, Math.min(1, 0.875 * zoomLevel))}rem`,
-              borderBottom: "none !important",
-              display: "flex",
-              alignItems: "center",
-            },
-            "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
-              backgroundColor: "#0b1f4b",
-              color: "#ffffff",
-              fontWeight: 800,
-              fontSize: `${Math.max(
-                0.625,
-                Math.min(0.875, 0.75 * zoomLevel)
-              )}rem`,
-              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
-                4 * zoomLevel
-              )}px`,
-              borderRight: "none !important",
-              borderBottom: "none !important",
-              height: `${Math.round(
-                (isMobile ? 28 : isTablet ? 32 : 36) * zoomLevel
-              )}px !important`,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            },
-            "& .MuiDataGrid-columnSeparator": {
-              display: "none !important",
-            },
-            "& .MuiDataGrid-cell": {
-              fontSize: `${Math.max(
-                0.625,
-                Math.min(0.875, 0.75 * zoomLevel)
-              )}rem`,
-              padding: `${Math.round(2 * zoomLevel)}px ${Math.round(
-                4 * zoomLevel
-              )}px`,
-              backgroundColor: "#ffffff !important",
-              color: "#000000",
-              height: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              lineHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-            },
-            "& .MuiDataGrid-row": {
-              backgroundColor: "#ffffff !important",
-              height: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              lineHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-            },
-            "& .MuiDataGrid-row:hover": {
-              backgroundColor: "#f0f8ff !important",
-              height: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              lineHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              "& .MuiDataGrid-cell": {
-                backgroundColor: "#f0f8ff !important",
-                height: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                minHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                maxHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                lineHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-              },
-            },
-            "& .even": {
-              backgroundColor: "#ffffff !important",
-            },
-            "& .odd": {
-              backgroundColor: "#ffffff !important",
-            },
-            "& .cargo-row-selected": {
-              backgroundColor: "rgba(24,62,138,0.15) !important",
-              boxShadow: "inset 4px 0 0 #183e8a !important",
-              height: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              lineHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              "& .MuiDataGrid-cell": {
-                backgroundColor: "transparent !important",
-                fontWeight: "600 !important",
-                height: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                minHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                maxHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                lineHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-              },
-            },
-            "& .cargo-row-selected:hover": {
-              backgroundColor: "rgba(24,62,138,0.2) !important",
-              boxShadow: "inset 4px 0 0 #183e8a !important",
-              height: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              minHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              maxHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              lineHeight: `${Math.round(
-                (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-              )}px !important`,
-              "& .MuiDataGrid-cell": {
-                backgroundColor: "transparent !important",
-                height: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                minHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                maxHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-                lineHeight: `${Math.round(
-                  (isMobile ? 24 : isTablet ? 28 : 32) * zoomLevel
-                )}px !important`,
-              },
-            },
-          }}
-        />
-      </Box>
-
-      <Paper
-        variant="outlined"
-        sx={{
-          p: { xs: 0.5, sm: 0.75 },
-          minHeight: { xs: "170px", sm: "190px", md: "217px" },
-          height: { xs: "170px", sm: "190px", md: "217px" },
-          maxHeight: { xs: "170px", sm: "190px", md: "217px" },
-          overflow: "hidden",
-        }}
-      >
-        <Typography
-          variant="subtitle1"
-          fontWeight={800}
-          sx={{
-            mb: { xs: 0.75, sm: 1 },
-            fontSize: { xs: "0.875rem", sm: "1rem" },
-          }}
-        >
-          Shipment Progress
-          {selectedCargoId && (
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              component="span"
-              sx={{
-                ml: { xs: 0.5, sm: 1 },
-                fontSize: { xs: "0.625rem", sm: "0.75rem" },
-              }}
-            >
-              (Cargo ID: {selectedCargoId})
-            </Typography>
-          )}
-        </Typography>
-        <Box
-          sx={{
-            height: "calc(100% - 40px)",
-            overflow: "auto",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            scrollbarWidth: "none",
-            "-ms-overflow-style": "none",
-            "&::-webkit-scrollbar": {
-              width: "0px",
-              height: "0px",
-              display: "none",
-            },
-          }}
-        >
-          {trackingQuery.isLoading && (
-            <Typography
-              color="text.secondary"
-              sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-            >
-              Loading tracking data...
-            </Typography>
-          )}
-          {trackingQuery.error && (
-            <Typography
-              color="error"
-              sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
-            >
-              Error loading tracking data. Please try selecting another cargo.
-            </Typography>
-          )}
-          {!trackingQuery.isLoading &&
-            !trackingQuery.error &&
-            !trackingQuery.data && (
+            }}
+          >
+            {trackingQuery.isLoading && (
               <Typography
                 color="text.secondary"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                Select a cargo to see tracking
+                Loading tracking data...
               </Typography>
             )}
-          {trackingQuery.data &&
-            trackingQuery.data.trackingDetails &&
-            trackingQuery.data.trackingDetails.length > 0 && (
-              <Box sx={{ width: "100%", height: "100%" }}>
-                <ShipmentStepper events={trackingQuery.data.trackingDetails} />
-              </Box>
-            )}
-          {trackingQuery.data &&
-            (!trackingQuery.data.trackingDetails ||
-              trackingQuery.data.trackingDetails.length === 0) && (
+            {trackingQuery.error && (
               <Typography
-                color="text.secondary"
+                color="error"
                 sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
               >
-                No tracking data available for this cargo.
+                Error loading tracking data. Please try selecting another cargo.
               </Typography>
             )}
-        </Box>
-      </Paper>
+            {!trackingQuery.isLoading &&
+              !trackingQuery.error &&
+              !trackingQuery.data && (
+                <Typography
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                >
+                  Select a cargo to see tracking
+                </Typography>
+              )}
+            {trackingQuery.data &&
+              trackingQuery.data.trackingDetails &&
+              trackingQuery.data.trackingDetails.length > 0 && (
+                <Box sx={{ width: "100%", height: "100%" }}>
+                  <ShipmentStepper
+                    events={trackingQuery.data.trackingDetails}
+                  />
+                </Box>
+              )}
+            {trackingQuery.data &&
+              (!trackingQuery.data.trackingDetails ||
+                trackingQuery.data.trackingDetails.length === 0) && (
+                <Typography
+                  color="text.secondary"
+                  sx={{ fontSize: { xs: "0.75rem", sm: "0.875rem" } }}
+                >
+                  No tracking data available for this cargo.
+                </Typography>
+              )}
+          </Box>
+        </Paper>
+      )}
     </Stack>
   );
 }
@@ -869,12 +880,24 @@ function ShipmentStepper({
       >
         {steps.map((step) => (
           <Step key={step.eventNo} completed={true}>
-            <StepLabel>
+            <StepLabel
+              sx={{
+                "& .MuiStepLabel-labelContainer": {
+                  display: "flex",
+                  justifyContent: "center",
+                  alignItems: "center",
+                },
+              }}
+            >
               <Box
                 sx={{
                   textAlign: "center",
                   maxWidth: { xs: 180, sm: 220, md: 250 },
                   minWidth: { xs: 150, sm: 180, md: 200 },
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
                 <Typography

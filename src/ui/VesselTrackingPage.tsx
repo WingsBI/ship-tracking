@@ -14,6 +14,8 @@ import {
   Toolbar,
   Tooltip,
   Typography,
+  useTheme,
+  useMediaQuery,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import OpenInFullIcon from "@mui/icons-material/OpenInFull";
@@ -46,6 +48,9 @@ export default function VesselTrackingPage() {
     null | "arrivals" | "departures" | "port" | "anchorage"
   >(null);
   const { data: terminals } = useTerminals();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   // Separate terminal selection for Vessel page
   const [selectedTerminalCode, setSelectedTerminalCode] = useState<string | "">(
     ""
@@ -54,7 +59,9 @@ export default function VesselTrackingPage() {
   const tracking = useVesselTracking(selectedTerminalCode || "ALL");
   const tileCategories = tracking.data?.tileCategories ?? [];
   const getVessels = (name: string): VesselTrackingDto[] =>
-    (tileCategories.find((t) => (t.tileCategory || "").toLowerCase() === name.toLowerCase())?.vessels) ?? [];
+    tileCategories.find(
+      (t) => (t.tileCategory || "").toLowerCase() === name.toLowerCase()
+    )?.vessels ?? [];
 
   useEffect(() => {
     if (!selectedTerminalCode && terminals && terminals.length > 0) {
@@ -65,18 +72,59 @@ export default function VesselTrackingPage() {
   }, [selectedTerminalCode, terminals]);
 
   return (
-    <Stack gap={2}>
-      <Paper variant="outlined" sx={{ p: 0.75 }}>
+    <Stack
+      gap={{ xs: 0.5, sm: 0.75, md: 1 }}
+      sx={{
+        width: "100%",
+        maxWidth: "100%",
+        overflow: "hidden",
+        height: "calc(100vh - 120px)",
+        justifyContent: "flex-start",
+      }}
+    >
+      <Paper variant="outlined" sx={{ p: { xs: 0.5, sm: 0.75 } }}>
         <Stack
           direction={{ xs: "column", sm: "row" }}
           alignItems={{ sm: "center" }}
           justifyContent="space-between"
-          gap={1}
+          gap={{ xs: 1, sm: 1.5 }}
+          sx={{
+            width: "100%",
+            padding: { xs: "4px", sm: "6px" },
+          }}
         >
-          <Typography variant="subtitle1" fontWeight={800}>
+          <Typography
+            variant="subtitle1"
+            fontWeight={800}
+            sx={{
+              fontSize: { xs: "0.875rem", sm: "1rem" },
+              textAlign: { xs: "center", sm: "left" },
+              width: { xs: "100%", sm: "auto" },
+            }}
+          >
             Vessel Tracking
           </Typography>
-          <FormControl size="small" sx={{ minWidth: 220 }}>
+          <FormControl
+            size="small"
+            sx={{
+              minWidth: { xs: "100%", sm: 200, md: 220 },
+              maxWidth: { xs: "100%", sm: "none" },
+              "& .MuiOutlinedInput-root": {
+                borderRadius: "6px",
+                backgroundColor: "#ffffff",
+                "&:hover .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#183e8a",
+                },
+                "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                  borderColor: "#183e8a",
+                },
+              },
+              "& .MuiInputLabel-root": {
+                color: "#666666",
+                fontSize: "0.875rem",
+              },
+            }}
+          >
             <InputLabel id="terminal-label">Terminal</InputLabel>
             <Select
               labelId="terminal-label"
@@ -106,13 +154,28 @@ export default function VesselTrackingPage() {
       <Box
         sx={{
           display: "grid",
-          gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" },
-          gap: 1.5,
+          gridTemplateColumns: {
+            xs: "1fr",
+            sm: "1fr 1fr",
+            md: "1fr 1fr",
+            lg: "1fr 1fr",
+            xl: "1fr 1fr",
+          },
+          gridTemplateRows: {
+            xs: `repeat(4, 1fr)`,
+            sm: `repeat(2, 1fr)`,
+            md: `repeat(2, 1fr)`,
+            lg: `repeat(2, 1fr)`,
+            xl: `repeat(2, 1fr)`,
+          },
+          gap: { xs: 0.5, sm: 0.75, md: 1 },
           width: "100%",
-          overflowX: "hidden",
+          maxWidth: "100%",
+          overflow: "hidden",
+          height: "100%",
         }}
       >
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, width: "100%", height: "100%" }}>
           <VesselPanel
             title="Expected Arrivals"
             color="#1e4b87"
@@ -121,11 +184,10 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={getVessels("Expected Arrivals")}
               loading={tracking.isLoading}
-              height={150}
             />
           </VesselPanel>
         </Box>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, width: "100%", height: "100%" }}>
           <VesselPanel
             title="Expected Departures"
             color="#6b3a1f"
@@ -134,11 +196,10 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={getVessels("Expected Departures")}
               loading={tracking.isLoading}
-              height={150}
             />
           </VesselPanel>
         </Box>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, width: "100%", height: "100%" }}>
           <VesselPanel
             title="Ships in Port"
             color="#49a6e9"
@@ -147,11 +208,10 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={getVessels("Ships in Port")}
               loading={tracking.isLoading}
-              height={150}
             />
           </VesselPanel>
         </Box>
-        <Box sx={{ minWidth: 0 }}>
+        <Box sx={{ minWidth: 0, width: "100%", height: "100%" }}>
           <VesselPanel
             title="Ships in Anchorage"
             color="#148f5c"
@@ -160,7 +220,6 @@ export default function VesselTrackingPage() {
             <VesselTable
               items={getVessels("Ships in Anchorage")}
               loading={tracking.isLoading}
-              height={150}
             />
           </VesselPanel>
         </Box>
@@ -170,9 +229,21 @@ export default function VesselTrackingPage() {
         fullScreen
         open={Boolean(maximized)}
         onClose={() => setMaximized(null)}
+        sx={{
+          "& .MuiDialog-paper": {
+            margin: 0,
+            maxWidth: "100vw",
+            maxHeight: "100vh",
+          },
+        }}
       >
         <AppBar color="primary" sx={{ position: "sticky" }}>
-          <Toolbar>
+          <Toolbar
+            sx={{
+              minHeight: { xs: "48px", sm: "56px", md: "64px" },
+              padding: { xs: "8px 12px", sm: "12px 16px", md: "16px 24px" },
+            }}
+          >
             <Typography sx={{ flex: 1 }} variant="h6">
               {maximized === "arrivals"
                 ? "Expected Arrivals"
@@ -187,38 +258,45 @@ export default function VesselTrackingPage() {
               color="inherit"
               onClick={() => setMaximized(null)}
               aria-label="close"
+              size={isMobile ? "small" : "medium"}
             >
               <CloseIcon />
             </IconButton>
           </Toolbar>
         </AppBar>
-        <DialogContent>
+        <DialogContent
+          sx={{
+            padding: { xs: 1, sm: 2, md: 3 },
+            height: "calc(100vh - 64px)",
+            overflow: "hidden",
+          }}
+        >
           {maximized === "arrivals" && (
             <VesselTable
               items={getVessels("Expected Arrivals")}
               loading={tracking.isLoading}
-              height={640}
+              isMaximized={true}
             />
           )}
           {maximized === "departures" && (
             <VesselTable
               items={getVessels("Expected Departures")}
               loading={tracking.isLoading}
-              height={640}
+              isMaximized={true}
             />
           )}
           {maximized === "port" && (
             <VesselTable
               items={getVessels("Ships in Port")}
               loading={tracking.isLoading}
-              height={640}
+              isMaximized={true}
             />
           )}
           {maximized === "anchorage" && (
             <VesselTable
               items={getVessels("Ships in Anchorage")}
               loading={tracking.isLoading}
-              height={640}
+              isMaximized={true}
             />
           )}
         </DialogContent>
@@ -238,29 +316,66 @@ function VesselPanel({
   onMax: () => void;
   children: React.ReactNode;
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
-    <Paper variant="outlined" sx={{ p: 0, overflow: "hidden" }}>
+    <Paper
+      variant="outlined"
+      sx={{
+        p: 0,
+        overflow: "hidden",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          px: 2,
-          py: 1,
+          px: { xs: 0.5, sm: 0.75, md: 1 },
+          py: { xs: 0.25, sm: 0.5 },
           bgcolor: color,
           color: "#fff",
+          minHeight: { xs: "32px", sm: "36px", md: "40px" },
+          flexShrink: 0,
         }}
       >
-        <Typography variant="subtitle1" fontWeight={800}>
+        <Typography
+          variant="subtitle1"
+          fontWeight={800}
+          sx={{
+            fontSize: { xs: "0.75rem", sm: "0.85rem", md: "0.9rem" },
+          }}
+        >
           {title}
         </Typography>
         <Tooltip title="Maximize">
-          <IconButton onClick={onMax} size="small" sx={{ color: "#fff" }}>
-            <OpenInFullIcon fontSize="small" />
+          <IconButton
+            onClick={onMax}
+            size={isMobile ? "small" : "medium"}
+            sx={{
+              color: "#fff",
+              padding: { xs: "2px", sm: "4px" },
+            }}
+          >
+            <OpenInFullIcon fontSize={isMobile ? "small" : "medium"} />
           </IconButton>
         </Tooltip>
       </Box>
-      <Box sx={{ p: 1.5 }}>{children}</Box>
+      <Box
+        sx={{
+          flex: 1,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
+        {children}
+      </Box>
     </Paper>
   );
 }
@@ -268,161 +383,390 @@ function VesselPanel({
 function VesselTable({
   items,
   loading,
-  height = 380,
 }: {
   items?: VesselTrackingDto[];
   loading: boolean;
-  height?: number;
+  isMaximized?: boolean;
 }) {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
+  // Calculate responsive sizes based on zoom and screen size
+  const getResponsiveSizes = () => {
+    const baseRowHeight = isMobile ? 28 : isTablet ? 32 : 36;
+    const baseHeaderHeight = isMobile ? 42 : isTablet ? 48 : 54;
+    const baseFontSize = isMobile ? 0.6 : isTablet ? 0.7 : 0.75;
+
+    return {
+      rowHeight: Math.max(24, Math.round(baseRowHeight)),
+      headerHeight: Math.max(38, Math.round(baseHeaderHeight)),
+      fontSize: Math.max(0.4, Math.min(0.7, baseFontSize)),
+    };
+  };
+
+  const sizes = getResponsiveSizes();
+
   const columns: GridColDef[] = [
-    { field: "vesselName", headerName: "Vessel Name", flex: 1, minWidth: 160 },
-    { field: "imo", headerName: "IMO", width: 120 },
-    { field: "calluid", headerName: "Call UID", width: 120 },
-    { field: "terminal", headerName: "Terminal", width: 120 },
-    { field: "voyageIn", headerName: "Voy-In", width: 110 },
-    { field: "voyageOut", headerName: "Voy-Out", width: 110 },
-    { field: "berth", headerName: "Berth", width: 110 },
-    { field: "callStatus", headerName: "Status", width: 120 },
+    {
+      field: "vesselName",
+      headerName: "Vessel Name",
+      flex: 1,
+      minWidth: isMobile ? 120 : 160,
+      maxWidth: isMobile ? 200 : undefined,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "imo",
+      headerName: "IMO",
+      width: isMobile ? 80 : 100,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "calluid",
+      headerName: "Call UID",
+      width: isMobile ? 90 : 110,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "terminal",
+      headerName: "Terminal",
+      width: isMobile ? 90 : 110,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "voyageIn",
+      headerName: "Voy-In",
+      width: isMobile ? 90 : 110,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "voyageOut",
+      headerName: "Voy-Out",
+      width: isMobile ? 95 : 115,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "berth",
+      headerName: "Berth",
+      width: isMobile ? 70 : 90,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
+    {
+      field: "callStatus",
+      headerName: "Status",
+      width: isMobile ? 80 : 100,
+      hideable: true,
+      align: "center",
+      headerAlign: "center",
+    },
     {
       field: "eta",
       headerName: "ETA",
-      width: 140,
-      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
+      valueFormatter: (value) =>
+        value
+          ? new Date(value)
+              .toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+              .replace(",", " ")
+          : "",
+      hideable: true,
     },
     {
       field: "etd",
       headerName: "ETD",
-      width: 140,
-      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
+      valueFormatter: (value) =>
+        value
+          ? new Date(value)
+              .toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+              .replace(",", " ")
+          : "",
+      hideable: true,
     },
     {
       field: "ata",
       headerName: "ATA",
-      width: 140,
-      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
+      valueFormatter: (value) =>
+        value
+          ? new Date(value)
+              .toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+              .replace(",", " ")
+          : "",
+      hideable: true,
     },
     {
       field: "atd",
       headerName: "ATD",
-      width: 140,
-      valueFormatter: (value) => (value ? new Date(value).toLocaleDateString() : ""),
+      width: isMobile ? 150 : 180,
+      align: "center",
+      headerAlign: "center",
+      valueFormatter: (value) =>
+        value
+          ? new Date(value)
+              .toLocaleString("en-GB", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+                hour12: true,
+              })
+              .replace(",", " ")
+          : "",
+      hideable: true,
     },
   ];
+
   return (
     <Box
       sx={{
-        height,
+        height: "100%",
         width: "100%",
-        "& .even": { bgcolor: "action.hover" },
-        overflowX: "hidden",
-        "& .MuiDataGrid-root": {
-          "& .MuiDataGrid-virtualScroller": {
-            "&::-webkit-scrollbar": { display: "none" },
-            "-ms-overflow-style": "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-virtualScrollerContent": {
-            "&::-webkit-scrollbar": { display: "none" },
-            "-ms-overflow-style": "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-virtualScrollerRenderZone": {
-            "&::-webkit-scrollbar": { display: "none" },
-            "-ms-overflow-style": "none",
-            scrollbarWidth: "none",
-          },
-        },
-        "& .MuiDataGrid-virtualScroller": {
-          "&::-webkit-scrollbar": { display: "none" },
-          "-ms-overflow-style": "none",
-          scrollbarWidth: "none",
-        },
-        "& .MuiDataGrid-virtualScrollerContent": {
-          "&::-webkit-scrollbar": { display: "none" },
-          "-ms-overflow-style": "none",
-          scrollbarWidth: "none",
-        },
-        "& .MuiDataGrid-virtualScrollerRenderZone": {
-          "&::-webkit-scrollbar": { display: "none" },
-          "-ms-overflow-style": "none",
-          scrollbarWidth: "none",
+        position: "relative",
+        overflow: "hidden",
+        p: { xs: 0.5, sm: 0.75, md: 1 },
+        scrollbarWidth: "none", // Firefox
+        msOverflowStyle: "none", // IE/Edge
+        "&::-webkit-scrollbar": {
+          display: "none", // Webkit
         },
       }}
     >
-      <DataGrid
-        rows={(items ?? []).map((v, idx) => ({ ...v, id: (v as any).callId ?? idx }))}
-        loading={loading}
-        columns={columns}
-        hideFooter
-        density="compact"
-        rowHeight={28}
-        columnHeaderHeight={36}
-        disableRowSelectionOnClick
-        getRowClassName={(params) =>
-          params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
-        }
-        disableColumnMenu
+      <Box
         sx={{
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: "#0b1f4b",
-            color: "#ffffff",
-            fontWeight: 800,
-            minHeight: "36px !important",
-            maxHeight: "36px !important",
-          },
-          "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
-            backgroundColor: "#0b1f4b",
-            color: "#ffffff",
-            fontWeight: 800,
-            fontSize: "0.8rem",
-            padding: "4px 8px",
-          },
-          "& .MuiDataGrid-columnSeparator": {
-            color: "rgba(255,255,255,0.25)",
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            "&::-webkit-scrollbar": { display: "none" },
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-virtualScrollerContent": {
-            "&::-webkit-scrollbar": { display: "none" },
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-virtualScrollerRenderZone": {
-            "&::-webkit-scrollbar": { display: "none" },
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-main": {
-            "&::-webkit-scrollbar": { display: "none" },
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-root": {
-            "&::-webkit-scrollbar": { display: "none" },
-            msOverflowStyle: "none",
-            scrollbarWidth: "none",
-          },
-          "& .MuiDataGrid-cell": {
-            backgroundColor: "#ffffff !important",
-            color: "#000000",
-          },
-          "& .MuiDataGrid-row": {
-            backgroundColor: "#ffffff !important",
-          },
-          "& .MuiDataGrid-row:hover": {
-            backgroundColor: "#f5f5f5 !important",
-          },
-          "& .even": {
-            backgroundColor: "#ffffff !important",
-          },
-          "& .odd": {
-            backgroundColor: "#ffffff !important",
+          position: "absolute",
+          top: { xs: 4, sm: 6, md: 8 },
+          left: { xs: 4, sm: 6, md: 8 },
+          right: { xs: 4, sm: 6, md: 8 },
+          bottom: { xs: 4, sm: 6, md: 8 },
+          overflow: "hidden",
+          scrollbarWidth: "none", // Firefox - hide scrollbar
+          msOverflowStyle: "none", // IE/Edge - hide scrollbar
+          "&::-webkit-scrollbar": {
+            display: "none", // Webkit - hide scrollbar
           },
         }}
-      />
+      >
+        <DataGrid
+          rows={(items ?? []).map((v, idx) => ({
+            ...v,
+            id: (v as any).callId ?? idx,
+          }))}
+          loading={loading}
+          columns={columns}
+          hideFooter
+          density="compact"
+          rowHeight={sizes.rowHeight}
+          columnHeaderHeight={sizes.headerHeight}
+          disableRowSelectionOnClick
+          disableColumnMenu
+          disableVirtualization={false}
+          autoHeight={false}
+          getRowClassName={(params) =>
+            params.indexRelativeToCurrentPage % 2 === 0 ? "even" : "odd"
+          }
+          slots={{
+            noRowsOverlay: () => (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  height: "100%",
+                  fontSize: `${sizes.fontSize}rem`,
+                  color: "text.secondary",
+                }}
+              >
+                No records found
+              </Box>
+            ),
+          }}
+          sx={{
+            border: "none",
+            height: "100% !important",
+            width: "100% !important",
+            fontSize: `${sizes.fontSize}rem`,
+            // Hide all possible scrollbars globally
+            scrollbarWidth: "none", // Firefox
+            msOverflowStyle: "none", // IE/Edge
+            "&::-webkit-scrollbar": {
+              display: "none !important", // Webkit
+            },
+            "& *": {
+              scrollbarWidth: "none !important", // Firefox - all children
+              msOverflowStyle: "none !important", // IE/Edge - all children
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit - all children
+              },
+            },
+            "& .MuiDataGrid-root": {
+              height: "100% !important",
+              overflow: "hidden !important",
+              scrollbarWidth: "none !important", // Firefox
+              msOverflowStyle: "none !important", // IE/Edge
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit
+              },
+            },
+            "& .MuiDataGrid-main": {
+              height: "100% !important",
+              overflow: "hidden !important",
+              scrollbarWidth: "none !important", // Firefox
+              msOverflowStyle: "none !important", // IE/Edge
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit
+              },
+            },
+            "& .MuiDataGrid-columnHeader, & .MuiDataGrid-columnHeaderTitle": {
+              backgroundColor: "#0b1f4b",
+              color: "#ffffff",
+              fontWeight: 700,
+              fontSize: `${Math.max(
+                0.7,
+                Math.min(0.9, sizes.fontSize * 1.0)
+              )}rem`,
+              padding: "12px 16px",
+              borderRight: "1px solid rgba(255,255,255,0.1) !important",
+              borderBottom: "1px solid #183e8a !important",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              textTransform: "uppercase",
+              letterSpacing: "0.3px",
+              boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+              position: "sticky",
+              top: 0,
+              zIndex: 10,
+              transition: "all 0.2s ease-in-out",
+              "&:hover": {
+                backgroundColor: "#183e8a",
+                transform: "translateY(-1px)",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+              },
+            },
+            "& .MuiDataGrid-columnSeparator": {
+              display: "none !important",
+            },
+            "& .MuiDataGrid-cell": {
+              fontSize: `${sizes.fontSize}rem`,
+              padding: "8px 12px",
+              backgroundColor: "#ffffff !important",
+              color: "#000000",
+              border: "none !important",
+              borderBottom: "none !important",
+              borderRight: "none !important",
+            },
+            "& .MuiDataGrid-row": {
+              backgroundColor: "#ffffff !important",
+              minHeight: `${sizes.rowHeight}px !important`,
+              maxHeight: `${sizes.rowHeight}px !important`,
+              border: "none !important",
+              "&:hover": {
+                backgroundColor: "#f0f8ff !important",
+                "& .MuiDataGrid-cell": {
+                  backgroundColor: "#f0f8ff !important",
+                },
+              },
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              height: "calc(100% - ${sizes.headerHeight}px) !important",
+              maxHeight: "calc(100% - ${sizes.headerHeight}px) !important",
+              overflow: "auto !important",
+              backgroundColor: "#ffffff",
+              scrollbarWidth: "none !important", // Firefox
+              msOverflowStyle: "none !important", // IE/Edge
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit
+              },
+            },
+            "& .MuiDataGrid-virtualScrollerContent": {
+              height: "auto !important",
+              minHeight: "auto !important",
+              scrollbarWidth: "none !important", // Firefox
+              msOverflowStyle: "none !important", // IE/Edge
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit
+              },
+            },
+            "& .MuiDataGrid-virtualScrollerRenderZone": {
+              height: "auto !important",
+              minHeight: "auto !important",
+              scrollbarWidth: "none !important", // Firefox
+              msOverflowStyle: "none !important", // IE/Edge
+              "&::-webkit-scrollbar": {
+                display: "none !important", // Webkit
+              },
+            },
+            "& .MuiDataGrid-footerContainer": {
+              display: "none !important",
+            },
+            // Additional MUI DataGrid scrollable elements
+            "& .MuiDataGrid-window": {
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
+              "&::-webkit-scrollbar": {
+                display: "none !important",
+              },
+            },
+            "& .MuiDataGrid-viewport": {
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
+              "&::-webkit-scrollbar": {
+                display: "none !important",
+              },
+            },
+            "& .MuiDataGrid-overlay": {
+              scrollbarWidth: "none !important",
+              msOverflowStyle: "none !important",
+              "&::-webkit-scrollbar": {
+                display: "none !important",
+              },
+            },
+          }}
+        />
+      </Box>
     </Box>
   );
 }

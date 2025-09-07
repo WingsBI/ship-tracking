@@ -19,13 +19,10 @@ import {
   useTheme,
   useMediaQuery,
   Tooltip,
-  Chip,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
 import ClearIcon from "@mui/icons-material/Clear";
-import DirectionsBoatIcon from "@mui/icons-material/DirectionsBoat";
-import LocalShippingIcon from "@mui/icons-material/LocalShipping";
 import { DataGrid } from "@mui/x-data-grid";
 import type { GridColDef } from "@mui/x-data-grid";
 import { useQuery } from "@tanstack/react-query";
@@ -708,7 +705,7 @@ export default function CargoTrackingPage() {
   );
 }
 
-const StyledDataGrid = styled(DataGrid)(({ theme }) => ({
+const StyledDataGrid = styled(DataGrid)(() => ({
   borderRadius: "8px !important",
   border: "none !important",
   overflow: "hidden !important",
@@ -771,11 +768,6 @@ function ShipmentStepper({
   // Sort events by eventNo to ensure correct order
   const sortedEvents = [...events].sort((a, b) => a.eventNo - b.eventNo);
 
-  // Helper function to truncate text with ellipsis
-  const truncateText = (text: string | null, maxLength: number = 30) => {
-    if (!text) return "";
-    return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
-  };
 
   // Extract transportation type from description dynamically
   const getTransportType = (desc: string) => {
@@ -847,29 +839,6 @@ function ShipmentStepper({
     return null;
   };
 
-  // Extract vessel name from event description
-  const getVesselName = (description: string | null) => {
-    if (!description) return null;
-    // Look for patterns like [MV ULTRAMARINE:ULTRA0125DG(22759)] or [SPIL NITA:04GJVW1MA(22075)]
-    // Handle different vessel prefixes: MV, SPIL, etc.
-    const vesselMatch = description.match(/\[([A-Z]+\s+[^\]]+)\]/);
-    if (vesselMatch) {
-      // Return the complete vessel identifier including the number in parentheses
-      return vesselMatch[1].trim();
-    }
-    return null;
-  };
-
-  // Extract order number from event description (for order-related events)
-  const getOrderNumber = (description: string | null) => {
-    if (!description) return null;
-    // Look for order patterns like [BSE0317726] but not vessel patterns
-    if (description.includes("Order")) {
-      const orderMatch = description.match(/\[([^\]]+)\]/);
-      return orderMatch ? orderMatch[1] : null;
-    }
-    return null;
-  };
 
   // Get main label from event description
   const getEventLabel = (description: string | null) => {

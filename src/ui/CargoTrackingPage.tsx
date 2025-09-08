@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Box,
   FormControl,
@@ -18,6 +18,7 @@ import {
   IconButton,
   useTheme,
   useMediaQuery,
+  Tooltip,
 } from "@mui/material";
 import { styled } from "@mui/material/styles";
 import SearchIcon from "@mui/icons-material/Search";
@@ -69,7 +70,7 @@ export default function CargoTrackingPage() {
     useState<string>("");
   const [isSearching, setIsSearching] = useState<boolean>(false);
 
-  // Debounce search input
+  // Debounce search input with faster response
   useEffect(() => {
     if (searchString !== debouncedSearchString) {
       setIsSearching(true);
@@ -78,80 +79,48 @@ export default function CargoTrackingPage() {
     const timer = setTimeout(() => {
       setDebouncedSearchString(searchString);
       setIsSearching(false);
-    }, 500); // 500ms delay
+    }, 300); // Reduced to 300ms for faster response
 
     return () => clearTimeout(timer);
   }, [searchString, debouncedSearchString]);
 
   const cargoQuery = useQuery({
-    queryKey: ["cargo", selectedTerminalCode || "all", debouncedSearchString],
+    queryKey: ["cargo", selectedTerminalCode || "all"],
     queryFn: async () => {
-      // If there's a specific search term, use the API search endpoint
-      if (debouncedSearchString.trim()) {
-        // Check if search term is numeric (likely a cargo ID)
-        const isNumeric = /^\d+$/.test(debouncedSearchString.trim());
-
-        if (isNumeric) {
-          // Search by cargo ID first using API
-          try {
-            const apiResults = await Api.searchCargo({
-              searchString: debouncedSearchString,
-              operator: "Equals",
-              terminalCode:
-                !selectedTerminalCode || selectedTerminalCode === "ALL"
-                  ? undefined
-                  : selectedTerminalCode,
-            });
-            if (apiResults.length > 0) {
-              return apiResults;
-            }
-          } catch (error) {
-            console.log("API search failed, falling back to client search");
-          }
-        }
-
-        // Fallback to client-side search for other fields
-        let allCargo = [];
-        if (!selectedTerminalCode || selectedTerminalCode === "ALL") {
-          allCargo = await Api.getCargoByTerminal();
-        } else {
-          allCargo = await Api.getCargoByTerminal(selectedTerminalCode);
-        }
-
-        const searchLower = debouncedSearchString.toLowerCase().trim();
-        return allCargo.filter((cargo) => {
-          return (
-            cargo.blNumber?.toLowerCase().includes(searchLower) ||
-            cargo.cargoID.toString().includes(searchLower) ||
-            cargo.containerID?.toLowerCase().includes(searchLower) ||
-            cargo.mvvin?.toLowerCase().includes(searchLower) ||
-            cargo.terminal?.toLowerCase().includes(searchLower) ||
-            cargo.cargoType?.toLowerCase().includes(searchLower)
-          );
-        });
-      }
-
-      // No search term - load all cargo
-      if (!selectedTerminalCode || selectedTerminalCode === "ALL") {
-        return Api.getCargoByTerminal();
-      } else {
-        return Api.getCargoByTerminal(selectedTerminalCode);
-      }
+      console.log("🔄 Cargo API called with:", { selectedTerminalCode });
+      
+      // Always load terminal-specific cargo (no API search)
+      const result = !selectedTerminalCode || selectedTerminalCode === "ALL"
+        ? await Api.getCargoByTerminal()
+        : await Api.getCargoByTerminal(selectedTerminalCode);
+      
+      console.log("✅ Terminal cargo loaded:", result.length, "records");
+      return result;
     },
-    enabled: true,
-    staleTime: 30000, // Cache for 30 seconds
-    gcTime: 300000, // Keep in cache for 5 minutes (renamed from cacheTime in newer versions)
+    enabled: Boolean(selectedTerminalCode), // Only enable when terminal is selected
+    staleTime: 300000, // 5 minutes cache
+    gcTime: 600000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: 1, // Reduce retry attempts
   });
 
   const trackingQuery = useQuery({
     queryKey: ["cargo-tracking", selectedCargoId ?? "none"],
     queryFn: async () => {
-      console.log("Fetching tracking for cargoId:", selectedCargoId);
+      console.log("🔄 Tracking API called for cargoId:", selectedCargoId);
       const result = await Api.getCargoTracking(Number(selectedCargoId));
-      console.log("Tracking data received:", result);
+      console.log("✅ Tracking data received:", result?.trackingDetails?.length || 0, "events");
       return result;
     },
     enabled: Boolean(selectedCargoId),
+    staleTime: 120000, // Cache tracking data for 2 minutes
+    gcTime: 600000, // Keep in cache for 10 minutes
+    refetchOnWindowFocus: false,
+    refetchOnMount: false,
+    refetchOnReconnect: false,
+    retry: 1,
   });
 
   useEffect(() => {
@@ -163,27 +132,76 @@ export default function CargoTrackingPage() {
     }
   }, [selectedTerminalCode, terminals]);
 
-  // Default bottom grid to first cargo of the top grid when available
+  // Clear selected cargo when terminal changes
   useEffect(() => {
-    if (
-      cargoQuery.data &&
-      Array.isArray(cargoQuery.data) &&
-      cargoQuery.data.length > 0
-    ) {
-      // Always select the first cargo when data changes, or if no cargo is selected
-      if (!selectedCargoId) {
-        const firstCargoId = cargoQuery.data[0].cargoID.toString();
-        console.log("Auto-selecting first cargo:", firstCargoId);
-        setSelectedCargoId(firstCargoId);
-      }
+    console.log("Terminal changed to:", selectedTerminalCode, "- clearing selected cargo");
+    setSelectedCargoId(null);
+  }, [selectedTerminalCode]);
+
+  // Memoize processed rows with client-side filtering
+  const processedRows = useMemo(() => {
+    if (!Array.isArray(cargoQuery.data)) return [];
+    
+    let filteredData = cargoQuery.data;
+    
+    // Apply client-side search filtering
+    if (debouncedSearchString.trim()) {
+      const searchTerm = debouncedSearchString.trim().toLowerCase();
+      console.log("🔍 Client-side filtering with:", searchTerm);
+      
+      filteredData = cargoQuery.data.filter((cargo: Cargo) => {
+        // Search in all relevant fields
+        const searchableFields = [
+          cargo.blNumber,
+          cargo.cargoType,
+          cargo.terminal,
+          cargo.containerID,
+          cargo.mvvin,
+          cargo.gcmarks,
+          cargo.cargoID?.toString(),
+          cargo.qtyOrdered?.toString(),
+          cargo.totalQtyHandled?.toString(),
+        ];
+        
+        // Check if search term matches any field (case-insensitive)
+        return searchableFields.some(field => 
+          field && field.toString().toLowerCase().includes(searchTerm)
+        );
+      });
+      
+      console.log("✅ Filtered results:", filteredData.length, "records");
+    }
+    
+    return filteredData.map((c: Cargo) => ({ ...c, id: c.cargoID }));
+  }, [cargoQuery.data, debouncedSearchString]);
+
+  // Default bottom grid to first cargo of the processed/filtered rows
+  useEffect(() => {
+    if (processedRows && processedRows.length > 0) {
+      // Always auto-select the first cargo from processed/filtered data
+      const firstCargoId = processedRows[0].cargoID.toString();
+      console.log("Auto-selecting first cargo from filtered data:", firstCargoId);
+      setSelectedCargoId(firstCargoId);
     } else {
       // Clear selected cargo when there are no rows
       if (selectedCargoId) {
-        console.log("Clearing selected cargo - no rows available");
+        console.log("Clearing selected cargo - no filtered data available");
         setSelectedCargoId(null);
       }
     }
-  }, [cargoQuery.data, selectedCargoId]);
+  }, [processedRows]); // This will trigger when filtered data changes
+
+  // Memoize row click handler
+  const handleRowClick = useCallback((params: any) => {
+    setSelectedCargoId(params.row.cargoID.toString());
+  }, []);
+
+  // Memoize row class name function
+  const getRowClassName = useCallback((params: any) => {
+    return params.row.cargoID.toString() === selectedCargoId
+      ? "cargo-row-selected"
+      : "";
+  }, [selectedCargoId]);
 
   const columns: GridColDef[] = useMemo(
     () => [
@@ -279,7 +297,7 @@ export default function CargoTrackingPage() {
 
   return (
     <Stack
-      gap={{ xs: 1, sm: 1.5, md: 2 }}
+      gap={{ xs: 0.5, sm: 0.75, md: 1 }}
       sx={{
         width: "100%",
         maxWidth: "100%",
@@ -376,34 +394,52 @@ export default function CargoTrackingPage() {
 
       <Box
         sx={{
-          height: "100%",
+          flex: 1,
           width: "100%",
           maxWidth: "100%",
           overflow: "hidden",
+          minHeight: 0, // Allow flex to control height
+          maxHeight: "calc(100vh - 350px)", // Limit height to ensure shipment progress is visible
+          borderRadius: "8px",
+          "& > .MuiDataGrid-root": {
+            borderRadius: "8px !important",
+            border: "none !important",
+            "& .MuiDataGrid-main": {
+              borderRadius: "8px !important",
+            },
+            "& .MuiDataGrid-virtualScroller": {
+              borderRadius: "0 0 8px 8px !important",
+            },
+            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+              borderBottom: "none !important",
+            },
+            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell:first-of-type": {
+              borderBottomLeftRadius: "8px !important",
+            },
+            "& .MuiDataGrid-row:last-child .MuiDataGrid-cell:last-of-type": {
+              borderBottomRightRadius: "8px !important",
+            },
+          },
         }}
       >
-        <DataGrid
-          rows={
-            Array.isArray(cargoQuery.data)
-              ? cargoQuery.data.map((c: Cargo) => ({ ...c, id: c.cargoID }))
-              : []
-          }
+        <StyledDataGrid
+          rows={processedRows}
           loading={cargoQuery.isLoading || isSearching}
           columns={columns}
-          hideFooter
+          hideFooter={!cargoQuery.data || cargoQuery.data.length <= 50}
           density="compact"
           rowHeight={rowH}
           columnHeaderHeight={headerH}
           disableColumnMenu
           disableRowSelectionOnClick
-          onRowClick={(params) =>
-            setSelectedCargoId(params.row.cargoID.toString())
-          }
-          getRowClassName={(params) =>
-            params.row.cargoID.toString() === selectedCargoId
-              ? "cargo-row-selected"
-              : ""
-          }
+          onRowClick={handleRowClick}
+          getRowClassName={getRowClassName}
+          initialState={{
+            pagination: {
+              paginationModel: { pageSize: 50 },
+            },
+          }}
+          pageSizeOptions={[25, 50, 100]}
           slots={{
             noRowsOverlay: () => (
               <Box
@@ -422,10 +458,10 @@ export default function CargoTrackingPage() {
           }}
           sx={{
             fontSize: baseRem,
-            height: "100% !important",
-            width: "100% !important",
+            height: "100%",
+            width: "100%",
             border: "none",
-            borderRadius: "8px 8px 8px 8px",
+            borderRadius: "8px",
             overflow: "hidden",
 
             // hide scrollbars on the grid and descendants
@@ -442,12 +478,13 @@ export default function CargoTrackingPage() {
             "& .MuiDataGrid-root": {
               height: "100% !important",
               overflow: "hidden !important",
-              borderRadius: "8px 8px 8px 8px",
+              borderRadius: "8px !important",
+              border: "none !important",
             },
             "& .MuiDataGrid-main": {
               height: "100% !important",
               overflow: "hidden !important",
-              borderRadius: "8px 8px 8px 8px",
+              borderRadius: "8px !important",
             },
 
             // ✅ allow scrolling here; hide only the bars
@@ -498,18 +535,20 @@ export default function CargoTrackingPage() {
                 6 * zoomLevel
               )}px`,
               // left alignment comes from column defs
+              "&:focus": {
+                outline: "none !important",
+                border: "none !important",
+              },
+              "&:focus-within": {
+                outline: "none !important",
+                border: "none !important",
+              },
             },
 
             "& .MuiDataGrid-row": {
               backgroundColor: "#ffffff !important",
               minHeight: `${rowH}px !important`,
               maxHeight: `${rowH}px !important`,
-              "&:hover": {
-                backgroundColor: "#f0f8ff !important",
-                "& .MuiDataGrid-cell": {
-                  backgroundColor: "#f0f8ff !important",
-                },
-              },
             },
 
             // keep your selected-row highlight with the left accent bar
@@ -531,12 +570,30 @@ export default function CargoTrackingPage() {
 
             // Ensure last row has proper bottom border radius
             "& .MuiDataGrid-row:last-child": {
+              "& .MuiDataGrid-cell": {
+                borderBottom: "none !important",
+              },
               "& .MuiDataGrid-cell:first-of-type": {
-                borderBottomLeftRadius: "8px",
+                borderBottomLeftRadius: "8px !important",
               },
               "& .MuiDataGrid-cell:last-of-type": {
-                borderBottomRightRadius: "8px",
+                borderBottomRightRadius: "8px !important",
               },
+            },
+            
+            // Ensure the virtual scroller and viewport have proper border radius
+            "& .MuiDataGrid-virtualScrollerContent": {
+              borderRadius: "0 0 8px 8px !important",
+            },
+            "& .MuiDataGrid-virtualScrollerRenderZone": {
+              borderRadius: "0 0 8px 8px !important",
+            },
+            
+            // Override any global DataGrid styles
+            "&.MuiDataGrid-root": {
+              borderRadius: "8px !important",
+              border: "none !important",
+              overflow: "hidden !important",
             },
           }}
         />
@@ -648,6 +705,27 @@ export default function CargoTrackingPage() {
   );
 }
 
+const StyledDataGrid = styled(DataGrid)(() => ({
+  borderRadius: "8px !important",
+  border: "none !important",
+  overflow: "hidden !important",
+  "& .MuiDataGrid-main": {
+    borderRadius: "8px !important",
+  },
+  "& .MuiDataGrid-virtualScroller": {
+    borderRadius: "0 0 8px 8px !important",
+  },
+  "& .MuiDataGrid-row:last-child .MuiDataGrid-cell": {
+    borderBottom: "none !important",
+    "&:first-of-type": {
+      borderBottomLeftRadius: "8px !important",
+    },
+    "&:last-of-type": {
+      borderBottomRightRadius: "8px !important",
+    },
+  },
+}));
+
 const QConnector = styled(StepConnector)(({ theme }) => ({
   [`&.${stepConnectorClasses.alternativeLabel}`]: {
     top: 22,
@@ -690,85 +768,181 @@ function ShipmentStepper({
   // Sort events by eventNo to ensure correct order
   const sortedEvents = [...events].sort((a, b) => a.eventNo - b.eventNo);
 
-  // Extract vessel name from the first event description if available
-  const getVesselName = (description: string | null) => {
-    if (!description) return null;
-    const vesselMatch = description.match(/\[MV\s+([^\]]+)\]/);
-    return vesselMatch ? vesselMatch[1].split(":")[0] : null;
+
+  // Extract transportation type from description dynamically
+  const getTransportType = (desc: string) => {
+    // Look for patterns like "Vessel call", "Truck call", "OwnDrive call", etc.
+    const callMatch = desc.match(/([A-Za-z]+)\s+call/i);
+    if (callMatch) {
+      return callMatch[1]; // Return the first word before "call"
+    }
+    
+    // Look for patterns like "MV VESSELNAME", "SPIL VESSELNAME", etc.
+    const vesselMatch = desc.match(/\b(MV|SPIL)\s+([A-Za-z0-9]+)/i);
+    if (vesselMatch) {
+      return 'Vessel';
+    }
+    
+    // Look for patterns like "Truck [ID]", "Trailer [ID]", etc.
+    const truckMatch = desc.match(/\b(Truck|Trailer|Vehicle|Transport)\b/i);
+    if (truckMatch) {
+      return truckMatch[1];
+    }
+    
+    // Look for patterns like "Ship [NAME]", "Boat [NAME]", etc.
+    const shipMatch = desc.match(/\b(Ship|Boat|Vessel)\b/i);
+    if (shipMatch) {
+      return shipMatch[1];
+    }
+    
+    // Look for any word that might be a transportation type at the beginning
+    const words = desc.split(' ');
+    if (words.length > 0) {
+      const firstWord = words[0];
+      // Check if it's a potential transportation type (capitalized word)
+      if (firstWord.match(/^[A-Z][a-z]+$/)) {
+        return firstWord;
+      }
+    }
+    
+    return null;
   };
+
+  // Detect transportation mode from event description dynamically
+  const getTransportationMode = (description: string | null) => {
+    if (!description) return null;
+    
+    const transportType = getTransportType(description);
+    if (!transportType) return null;
+    
+    const lowerType = transportType.toLowerCase();
+    
+    // Categorize transportation types
+    if (lowerType.includes('vessel') || 
+        lowerType.includes('ship') || 
+        lowerType.includes('boat') ||
+        lowerType.includes('mv') ||
+        lowerType.includes('spil') ||
+        lowerType.includes('maritime')) {
+      return 'vessel';
+    }
+    
+    if (lowerType.includes('truck') || 
+        lowerType.includes('trailer') || 
+        lowerType.includes('owndrive') ||
+        lowerType.includes('vehicle') ||
+        lowerType.includes('transport') ||
+        lowerType.includes('drive')) {
+      return 'truck';
+    }
+    
+    return null;
+  };
+
 
   // Get main label from event description
   const getEventLabel = (description: string | null) => {
-    if (!description) return "Unknown Event";
+    if (!description) return "Event Pending";
 
-    // Extract the main action from the description
-    if (description.includes("expected to arrive"))
-      return "Vessel Expected to Arrive";
-    if (
-      description.includes("was created") &&
-      description.includes("Vessel call")
-    )
-      return "Vessel Call Created";
-    if (
-      description.includes("Reception Order") &&
-      description.includes("was created")
-    )
-      return "Reception Order Created";
-    if (
-      description.includes("Loading Order") &&
-      description.includes("was created")
-    )
-      return "Loading Order Created";
-    if (
-      description.includes("Discharge Order") &&
-      description.includes("was created")
-    )
-      return "Discharge Order Created";
-    if (
-      description.includes("Delivery Order") &&
-      description.includes("was created")
-    )
-      return "Delivery Order Created";
-    if (description.includes("arrived")) return "Vessel Arrived";
-    if (description.includes("departed")) return "Vessel Departed";
-    if (description.includes("customs")) return "Customs Processing";
-    if (description.includes("loaded")) return "Cargo Loaded";
-    if (description.includes("discharged")) return "Cargo Discharged";
-    if (description.includes("delivered")) return "Cargo Delivered";
 
-    // Fallback to first part of description
-    return description.split(" ").slice(0, 3).join(" ") + "...";
-  };
+    // Extract action from description
+    const getAction = (desc: string) => {
+      const lowerDesc = desc.toLowerCase();
+      
+      if (lowerDesc.includes('expected to arrive')) return 'Expected to Arrive';
+      if (lowerDesc.includes('expected to depart')) return 'Expected to Depart';
+      if (lowerDesc.includes('was created')) return 'Call Created';
+      if (lowerDesc.includes('arrived')) return 'Arrived';
+      if (lowerDesc.includes('departed')) return 'Departed';
+      if (lowerDesc.includes('was received')) return 'Received';
+      if (lowerDesc.includes('loaded')) return 'Loaded';
+      if (lowerDesc.includes('discharged')) return 'Discharged';
+      if (lowerDesc.includes('delivered')) return 'Delivered';
+      if (lowerDesc.includes('customs')) return 'Customs Processing';
+      
+      return null;
+    };
 
-  // Extract order number if available
-  const getOrderNumber = (description: string | null) => {
-    if (!description) return null;
-    const orderMatch = description.match(/\[([A-Z0-9\/]+)\]/);
-    return orderMatch ? orderMatch[1] : null;
+    // Extract order type for order-related events
+    const getOrderType = (desc: string) => {
+      if (desc.includes('Inward Transfer Order')) return 'Inward Transfer Order';
+      if (desc.includes('Outward Transfer Order')) return 'Outward Transfer Order';
+      if (desc.includes('Reception Order')) return 'Reception Order';
+      if (desc.includes('Loading Order')) return 'Loading Order';
+      if (desc.includes('Discharge Order')) return 'Discharge Order';
+      if (desc.includes('Delivery Order')) return 'Delivery Order';
+      
+      return null;
+    };
+
+    const transportType = getTransportType(description);
+    const action = getAction(description);
+    const orderType = getOrderType(description);
+
+    // Build dynamic label based on what's found
+    if (orderType && description.includes('was created')) {
+      return `${orderType} Created`;
+    }
+    
+    if (transportType && action) {
+      return `${transportType} ${action}`;
+    }
+    
+    if (action) {
+      return action;
+    }
+
+    // Fallback: extract the main action from the beginning
+    const words = description.split(" ");
+    if (words.length >= 2) {
+      return words.slice(0, 3).join(" ");
+    }
+    return description;
   };
 
   const steps = sortedEvents.map((event) => {
-    const vesselName = getVesselName(event.eventDescription);
-    const orderNumber = getOrderNumber(event.eventDescription);
-    const eventLabel = getEventLabel(event.eventDescription);
     const eventDate = new Date(event.eventDate);
+    const isValidDate = eventDate.getFullYear() > 1900;
+
+    // Check if event has no valid data
+    const hasNoData = !event.eventDescription || 
+                     event.eventDescription.trim() === "" ||
+                     event.eventDescription.toLowerCase() === "null";
+
+    if (hasNoData) {
+      return {
+        label: "No Details Found",
+        reference: null,
+        order: null,
+        date: null,
+        time: null,
+        fullDescription: null,
+        eventNo: event.eventNo,
+        hasNoData: true,
+      };
+    }
+
+    const eventLabel = getEventLabel(event.eventDescription);
+    const transportMode = getTransportationMode(event.eventDescription);
 
     return {
-      label: eventLabel,
-      vessel: vesselName,
-      order: orderNumber,
-      date: eventDate.toLocaleDateString("en-GB", {
+      label: eventLabel, // Keep the black bold step label
+      reference: null,
+      order: null,
+      date: isValidDate ? eventDate.toLocaleDateString("en-GB", {
         day: "2-digit",
         month: "2-digit",
         year: "numeric",
-      }),
-      time: eventDate.toLocaleTimeString("en-GB", {
+      }) : null,
+      time: isValidDate ? eventDate.toLocaleTimeString("en-GB", {
         hour: "2-digit",
         minute: "2-digit",
         hour12: true,
-      }),
+      }) : null,
       fullDescription: event.eventDescription,
       eventNo: event.eventNo,
+      transportMode: transportMode,
+      hasNoData: false,
     };
   });
 
@@ -829,58 +1003,91 @@ function ShipmentStepper({
                   justifyContent: "center",
                 }}
               >
-                <Typography
-                  variant="subtitle2"
-                  sx={{
-                    fontWeight: 700,
-                    mb: { xs: 0.25, sm: 0.5 },
-                    fontSize: { xs: "0.625rem", sm: "0.75rem", md: "0.875rem" },
-                  }}
-                >
-                  {step.label}
-                </Typography>
-
-                {step.vessel && (
+                {step.hasNoData ? (
+                  // Show "No Details Found" for events with no data
+                  <>
                   <Typography
-                    variant="caption"
+                    variant="subtitle2"
                     sx={{
-                      display: "block",
-                      color: "primary.main",
-                      fontWeight: 600,
-                      mb: { xs: 0.25, sm: 0.5 },
-                      fontSize: { xs: "0.5rem", sm: "0.625rem", md: "0.75rem" },
+                      fontWeight: 700,
+                        mb: { xs: 0.5, sm: 1 },
+                      fontSize: { xs: "0.625rem", sm: "0.75rem", md: "0.875rem" },
+                        color: "text.secondary",
                     }}
                   >
-                    Vessel: {step.vessel}
+                    {step.label}
                   </Typography>
-                )}
+                    <Typography
+                      variant="caption"
+                      sx={{
+                        display: "block",
+                        color: "text.disabled",
+                        mt: { xs: 0.25, sm: 0.5 },
+                        fontSize: { xs: "0.4rem", sm: "0.5rem", md: "0.7rem" },
+                      }}
+                    >
+                      Event #{step.eventNo}
+                    </Typography>
+                  </>
+                ) : (
+                  // Show full description for events with data
+                  <>
+                  
 
-                {step.order && (
+                    {/* Black bold step label */}
+                    <Typography
+                      variant="subtitle2"
+                      sx={{
+                        fontWeight: 700,
+                        mb: { xs: 0.25, sm: 0.5 },
+                        fontSize: { xs: "0.625rem", sm: "0.75rem", md: "0.875rem" },
+                        color: "text.primary",
+                      }}
+                    >
+                      {step.label}
+                    </Typography>
+
+                    {/* Complete description in blue */}
+                    <Tooltip 
+                      title={step.fullDescription || ""} 
+                      arrow 
+                      placement="top"
+                      enterDelay={300}
+                    >
                   <Typography
                     variant="caption"
-                    sx={{
-                      display: "block",
-                      color: "text.secondary",
-                      fontFamily: "monospace",
-                      mb: { xs: 0.25, sm: 0.5 },
-                      fontSize: { xs: "0.5rem", sm: "0.625rem", md: "0.75rem" },
-                    }}
-                  >
-                    Order: {step.order}
+                     sx={{
+                       fontWeight: 600,
+                       color: "primary.main",
+                       mb: { xs: 0.25, sm: 0.5 },
+                       fontSize: { xs: "0.5rem", sm: "0.625rem", md: "0.75rem" },
+                       maxWidth: { xs: 150, sm: 180, md: 200 },
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display: "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: "vertical",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {step.fullDescription}
                   </Typography>
-                )}
+                    </Tooltip>
 
+                    {(step.date && step.time) && (
                 <Typography
                   variant="caption"
                   sx={{
                     display: "block",
                     color: "text.secondary",
                     fontWeight: 500,
+                          mb: { xs: 0.25, sm: 0.5 },
                     fontSize: { xs: "0.5rem", sm: "0.625rem", md: "0.75rem" },
                   }}
                 >
                   {step.date} • {step.time}
                 </Typography>
+                    )}
 
                 <Typography
                   variant="caption"
@@ -893,6 +1100,8 @@ function ShipmentStepper({
                 >
                   Event #{step.eventNo}
                 </Typography>
+                  </>
+                )}
               </Box>
             </StepLabel>
           </Step>
